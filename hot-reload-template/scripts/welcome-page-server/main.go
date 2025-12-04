@@ -15,7 +15,7 @@ type WelcomePageData struct {
 	RepoURL          string
 	RepoFolder       string
 	RepoBranch       string
-	RunCommand       string
+	DevStartCommand  string
 	WorkspacePath    string
 	SyncInterval     string
 	EnableDevHealth  string
@@ -35,7 +35,7 @@ func welcomeHandler(w http.ResponseWriter, r *http.Request) {
 		RepoURL:         getEnvOrDefault("GITHUB_REPO_URL", "not set"),
 		RepoFolder:      getEnvOrDefault("GITHUB_REPO_FOLDER", "not set"),
 		RepoBranch:      getEnvOrDefault("GITHUB_BRANCH", "not set"),
-		RunCommand:       getEnvOrDefault("RUN_COMMAND", "not set"),
+		DevStartCommand:  getEnvOrDefault("DEV_START_COMMAND", "not set"),
 		WorkspacePath:    getEnvOrDefault("WORKSPACE_PATH", "/workspaces/app"),
 		SyncInterval:     getEnvOrDefault("GITHUB_SYNC_INTERVAL", "30"),
 		EnableDevHealth:  getEnvOrDefault("ENABLE_DEV_HEALTH", "true"),
@@ -303,9 +303,9 @@ const welcomePageHTML = `<!DOCTYPE html>
                 {{if eq .RepoBranch "not set"}}<span class="hint-text">(leave blank for main branch)</span>{{end}}
             </div>
             <div class="status-item">
-                <span class="status-label">Run Command:</span>
-                <span class="status-value">{{.RunCommand}}</span>
-                {{if eq .RunCommand "not set"}}<span class="badge badge-warning">Not Set</span>{{else}}<span class="badge badge-success">Configured</span>{{end}}
+                <span class="status-label">Dev Start Command:</span>
+                <span class="status-value">{{.DevStartCommand}}</span>
+                {{if eq .DevStartCommand "not set"}}<span class="badge badge-warning">Not Set</span>{{else}}<span class="badge badge-success">Configured</span>{{end}}
             </div>
             <div class="status-item">
                 <span class="status-label">Workspace Path:</span>
@@ -353,21 +353,21 @@ const welcomePageHTML = `<!DOCTYPE html>
             <div class="step">
                 <span class="step-number">2</span>
                 <strong>Configure Your Startup Command</strong>
-                <p><strong>Both are needed:</strong> Set RUN_COMMAND AND create dev_startup.sh in your repository</p>
+                <p><strong>Both are needed:</strong> Set DEV_START_COMMAND and create a dev_startup.sh in your repository</p>
                 <div class="code-block">
-                    <code><span class="env-var">RUN_COMMAND</span> = <span class="value">bash dev_startup.sh</span></code>
+                    <code><span class="env-var">DEV_START_COMMAND</span> = <span class="value">bash dev_startup.sh</span></code>
                 </div>
-                <p style="margin-top: 15px;"><strong>Why dev_startup.sh is better than a 1-liner RUN_COMMAND:</strong></p>
+                <p style="margin-top: 15px;"><strong>Why dev_startup.sh is better than a 1-liner DEV_START_COMMAND:</strong></p>
                 <ul style="margin: 10px 0 10px 20px;">
                     <li>You control and version it in your repo (not locked in App Platform settings)</li>
                     <li>Easier to update without redeploying the container</li>
                     <li>Can include complex logic, error handling, and dependency management</li>
-                    <li>Changes sync automatically every 30s with your code</li>
                 </ul>
                 <p style="margin-top: 10px;"><strong>Example dev_startup.sh for Next.js:</strong></p>
                 <div class="code-block">
                     <code>#!/bin/bash<br>cd /workspaces/app<br>npm install<br>npm run dev -- --hostname 0.0.0.0 --port 8080</code>
                 </div>
+                <p style="margin-top: 10px;">See ready-made templates in <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/hot-reload-template/examples" target="_blank">hot-reload-template/examples</a>, and ask your AI assistant to tailor a dev_startup.sh for your specific codebase.</p>
             </div>
 
             <div class="step">
@@ -400,15 +400,15 @@ const welcomePageHTML = `<!DOCTYPE html>
                 <li>Monitor deployment and troubleshoot issues</li>
                 <li>Execute commands in your running container for debugging</li>
             </ul>
-            <p style="margin-top: 15px;"><strong>Supported AI assistants:</strong> Claude Code, GitHub Copilot, Cursor, or any agent that can execute commands</p>
+            <p style="margin-top: 15px;"><strong>Supported AI assistants:</strong> Claude Code, GitHub Copilot, Cursor, Codex, Antigravity, or any agent that can execute commands</p>
             <p><strong>Get started:</strong> See the <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/blob/main/hot-reload-template/agent.md" target="_blank">agent.md playbook</a> for detailed automation instructions.</p>
         </div>
         {{else}}
         <div class="success">
             <strong>✓ Repository Configured!</strong>
             <p>Your repository is set to: <code>{{.RepoURL}}</code></p>
-            {{if eq .RunCommand "not set"}}
-            <p style="margin-top: 10px;"><strong>Next:</strong> Set <code>RUN_COMMAND</code> or add a <code>dev_startup.sh</code> script to your repository.</p>
+            {{if eq .DevStartCommand "not set"}}
+            <p style="margin-top: 10px;"><strong>Next:</strong> Set <code>DEV_START_COMMAND</code> or add a <code>dev_startup.sh</code> script to your repository.</p>
             {{else}}
             <p style="margin-top: 10px;"><strong>Next:</strong> Your app should start automatically. Check the logs if you don't see your application.</p>
             {{end}}
@@ -423,6 +423,7 @@ const welcomePageHTML = `<!DOCTYPE html>
                 <div class="code-block">
                     <code>#!/bin/bash<br>cd /workspaces/app<br>npm install<br>npm run dev -- --hostname 0.0.0.0 --port 8080</code>
                 </div>
+                <p style="margin-top: 8px;">Starting point only—use your AI assistant to generate a dev_startup.sh tailored to your project, or copy from the <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/hot-reload-template/examples" target="_blank">examples directory</a>.</p>
             </div>
 
             <div class="step">
@@ -430,6 +431,7 @@ const welcomePageHTML = `<!DOCTYPE html>
                 <div class="code-block">
                     <code>#!/bin/bash<br>cd /workspaces/app<br>uv sync --no-dev<br>uv run uvicorn main:app --host 0.0.0.0 --port 8080 --reload</code>
                 </div>
+                <p style="margin-top: 8px;">Adapt with your AI assistant or reuse the <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/hot-reload-template/examples" target="_blank">examples/dev_startup.sh.python</a> template.</p>
             </div>
 
             <div class="step">
@@ -437,6 +439,7 @@ const welcomePageHTML = `<!DOCTYPE html>
                 <div class="code-block">
                     <code>#!/bin/bash<br>cd /workspaces/app<br>go mod tidy<br>go run main.go</code>
                 </div>
+                <p style="margin-top: 8px;">Have your AI assistant extend this for your modules, or copy from <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/hot-reload-template/examples" target="_blank">examples/dev_startup.sh.golang</a> and adjust.</p>
             </div>
         </div>
 
@@ -466,4 +469,3 @@ const welcomePageHTML = `<!DOCTYPE html>
     </div>
 </body>
 </html>`
-

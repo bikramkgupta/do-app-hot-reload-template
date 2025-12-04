@@ -81,7 +81,7 @@ services:
         scope: RUN_TIME
 
       - key: GITHUB_SYNC_INTERVAL
-        value: "60"
+        value: "30"
         scope: RUN_TIME
 
       # === Dev Health Server ===
@@ -92,13 +92,20 @@ services:
         scope: RUN_TIME
 
       # === Application Startup ===
-      # Command to run your application (if startup.sh not found in repo)
-      # Examples:
-      #   - "npm start"
+      # RECOMMENDED: Use a dev_startup.sh script to handle all corner cases.
+      # Scripts can manage dependency installation, lock file conflicts, error recovery,
+      # and hot reload properly. See hot-reload-template/examples/ for proven scripts.
+      # 
+      # Example: "bash dev_startup.sh"
+      #
+      # Simple commands (NOT RECOMMENDED - limited error handling):
+      #   - "npm run dev -- --hostname 0.0.0.0 --port 8080"
       #   - "python app.py"
       #   - "go run main.go"
       #   - "uvicorn app:app --host 0.0.0.0 --port 8080"
-      - key: RUN_COMMAND
+      #   Note: Simple commands don't handle dependency installation, lock file conflicts,
+      #   or automatic error recovery. Use scripts for production-ready setups.
+      - key: DEV_START_COMMAND
         value: ""
         scope: RUN_TIME
 

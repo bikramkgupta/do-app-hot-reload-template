@@ -2,7 +2,7 @@
 
 **An opinionated workflow for AI-assisted development on DigitalOcean App Platform. Test locally → Deploy to testing (hot-reload) → Deploy to production (optimized).**
 
-Designed for AI assistants like Cursor, GitHub Copilot, and Claude to provide a hands-free experience for rapid iteration at scale.
+Designed for AI assistants like Claude Code, Cursor, Codex, VS Code Copilot and Antigravity to provide a hands-free experience for rapid iteration at scale.
 
 [![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main)
 
