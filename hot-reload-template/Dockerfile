@@ -6,7 +6,7 @@
 # Stage 1: Build health server from source
 # =============================================================================
 FROM golang:1.23-alpine AS health-builder
-COPY scripts/dev-health-server/main.go /build/
+COPY hot-reload-template/scripts/dev-health-server/main.go /build/
 RUN cd /build && go build -ldflags="-s -w" -o dev-health-server main.go
 
 # =============================================================================
@@ -262,11 +262,11 @@ ENV PATH=/home/devcontainer/.local/bin:/usr/local/go/bin:/home/devcontainer/.car
 USER root
 
 # GitHub sync script
-COPY --chown=devcontainer:devcontainer scripts/github-sync.sh /usr/local/bin/github-sync.sh
+COPY --chown=devcontainer:devcontainer hot-reload-template/scripts/github-sync.sh /usr/local/bin/github-sync.sh
 RUN chmod +x /usr/local/bin/github-sync.sh
 
 # Startup script
-COPY --chown=devcontainer:devcontainer scripts/startup.sh /usr/local/bin/startup.sh
+COPY --chown=devcontainer:devcontainer hot-reload-template/scripts/startup.sh /usr/local/bin/startup.sh
 RUN chmod +x /usr/local/bin/startup.sh
 
 # Dev health check server (built from source in stage 1)
