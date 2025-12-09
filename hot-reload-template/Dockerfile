@@ -295,7 +295,8 @@ RUN if [ "$INSTALL_RUST" = "true" ]; then \
 
 # Ruby (rbenv) - Rehash after copy to regenerate shims with correct paths
 RUN if [ "$INSTALL_RUBY" = "true" ]; then \
-        export PATH="$HOME/.rbenv/bin:$PATH" \
+        export RBENV_ROOT="$HOME/.rbenv" \
+        && export PATH="$HOME/.rbenv/bin:$PATH" \
         && eval "$(rbenv init - bash)" \
         && rbenv rehash \
         && echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> /home/devcontainer/.bashrc \
