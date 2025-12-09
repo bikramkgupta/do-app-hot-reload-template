@@ -145,37 +145,17 @@ RUN if [ "$INSTALL_RUST" = "true" ]; then \
 ENV PATH=/root/.cargo/bin:$PATH
 
 # =============================================================================
-# Install Ruby via rbenv (if enabled)
+# Install Ruby build dependencies (if enabled) - Ruby itself installed as devcontainer user
 # =============================================================================
 RUN if [ "$INSTALL_RUBY" = "true" ]; then \
-        # Install rbenv dependencies
         apt-get update && apt-get install -y --no-install-recommends \
             libreadline-dev \
             libyaml-dev \
             libz-dev \
             libffi-dev \
             libssl-dev \
-        && rm -rf /var/lib/apt/lists/* \
-        # Install rbenv and ruby-build
-        && git clone https://github.com/rbenv/rbenv.git /root/.rbenv \
-        && git clone https://github.com/rbenv/ruby-build.git /root/.rbenv/plugins/ruby-build \
-        # Build rbenv
-        && cd /root/.rbenv && src/configure && make -C src \
-        # Setup rbenv in PATH
-        && export PATH="/root/.rbenv/bin:$PATH" \
-        && eval "$(rbenv init -)" \
-        # Install Ruby versions
-        && for version in $RUBY_VERSIONS; do \
-            rbenv install $version; \
-        done \
-        # Set default Ruby version
-        && rbenv global $DEFAULT_RUBY \
-        && rbenv rehash; \
+        && rm -rf /var/lib/apt/lists/*; \
     fi
-
-# Set Ruby environment variables globally
-ENV RBENV_ROOT=/root/.rbenv
-ENV PATH=/root/.rbenv/shims:/root/.rbenv/bin:$PATH
 
 # =============================================================================
 # Install CLI Tools - always latest
@@ -255,12 +235,6 @@ RUN if [ "$INSTALL_RUST" = "true" ]; then \
         && chown -R devcontainer:devcontainer /home/devcontainer/.cargo /home/devcontainer/.rustup; \
     fi
 
-RUN if [ "$INSTALL_RUBY" = "true" ]; then \
-        cp -r /root/.rbenv /home/devcontainer/.rbenv \
-        && chown -R devcontainer:devcontainer /home/devcontainer/.rbenv; \
-    fi
-
-
 # Switch to devcontainer user
 USER devcontainer
 WORKDIR /workspaces/app
@@ -293,14 +267,18 @@ RUN if [ "$INSTALL_RUST" = "true" ]; then \
         echo 'source "$HOME/.cargo/env"' >> /home/devcontainer/.bashrc; \
     fi
 
-# Ruby (rbenv) - Rehash after copy to regenerate shims with correct paths
+# Ruby (rbenv) - Install directly as devcontainer user (Ruby binaries have hardcoded paths)
 RUN if [ "$INSTALL_RUBY" = "true" ]; then \
-        export RBENV_ROOT="$HOME/.rbenv" \
+        git clone https://github.com/rbenv/rbenv.git ~/.rbenv \
+        && git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build \
+        && cd ~/.rbenv && src/configure && make -C src \
         && export PATH="$HOME/.rbenv/bin:$PATH" \
-        && eval "$(rbenv init - bash)" \
-        && rbenv rehash \
-        && echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> /home/devcontainer/.bashrc \
-        && echo 'eval "$(rbenv init - bash)"' >> /home/devcontainer/.bashrc; \
+        && eval "$(~/.rbenv/bin/rbenv init - bash)" \
+        && ~/.rbenv/bin/rbenv install 3.4.7 \
+        && ~/.rbenv/bin/rbenv global 3.4.7 \
+        && ~/.rbenv/bin/rbenv rehash \
+        && echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc \
+        && echo 'eval "$(rbenv init - bash)"' >> ~/.bashrc; \
     fi
 
 # doctl completion
