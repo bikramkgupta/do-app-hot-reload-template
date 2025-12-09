@@ -293,9 +293,12 @@ RUN if [ "$INSTALL_RUST" = "true" ]; then \
         echo 'source "$HOME/.cargo/env"' >> /home/devcontainer/.bashrc; \
     fi
 
-# Ruby (rbenv)
+# Ruby (rbenv) - Rehash after copy to regenerate shims with correct paths
 RUN if [ "$INSTALL_RUBY" = "true" ]; then \
-        echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> /home/devcontainer/.bashrc \
+        export PATH="$HOME/.rbenv/bin:$PATH" \
+        && eval "$(rbenv init - bash)" \
+        && rbenv rehash \
+        && echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> /home/devcontainer/.bashrc \
         && echo 'eval "$(rbenv init - bash)"' >> /home/devcontainer/.bashrc; \
     fi
 
