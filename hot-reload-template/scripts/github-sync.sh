@@ -393,15 +393,30 @@ sync_repo() {
                             fi
                         done
                         
+                        RUBY_READY=false
                         if [ -n "$RBENV_ROOT" ]; then
                             export RBENV_ROOT
                             export PATH="$RBENV_ROOT/bin:$RBENV_ROOT/shims:$PATH"
                             eval "$($RBENV_ROOT/bin/rbenv init - bash)" 2>/dev/null || true
+                            
+                            # Check if Ruby and bundle actually work (not just exist)
+                            if command -v ruby >/dev/null 2>&1 && command -v bundle >/dev/null 2>&1; then
+                                # Test that Ruby actually executes (not broken paths)
+                                if ruby -v >/dev/null 2>&1 && bundle --version >/dev/null 2>&1; then
+                                    RUBY_READY=true
+                                fi
+                            fi
                         elif command -v ruby >/dev/null 2>&1 && command -v bundle >/dev/null 2>&1; then
-                            # Ruby and bundler are already in PATH
-                            log_info "Using system Ruby/bundler"
-                        else
-                            log_warn "Ruby/bundler not found. Skipping bundle install."
+                            # System Ruby/bundler - test they work
+                            if ruby -v >/dev/null 2>&1 && bundle --version >/dev/null 2>&1; then
+                                RUBY_READY=true
+                                log_info "Using system Ruby/bundler"
+                            fi
+                        fi
+                        
+                        if [ "$RUBY_READY" = "false" ]; then
+                            log_warn "Ruby/bundler not ready. Skipping bundle install."
+                            log_warn "  (Ruby may still be installing. dev_startup.sh will handle bundle install.)"
                             continue
                         fi
                         
@@ -427,7 +442,8 @@ sync_repo() {
                                 log_info "Bundle install completed after hard rebuild"
                                 echo "$CURRENT_GEMFILE_HASH" > "$GEMFILE_HASH_FILE"
                             else
-                                log_error "Bundle install failed even after hard rebuild"
+                                log_warn "Bundle install failed even after hard rebuild"
+                                log_warn "  (dev_startup.sh will retry on next app restart)"
                             fi
                         fi
                     fi

@@ -27,11 +27,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 #   - App Platform: Set in app.yaml under 'build_args' section
 #   - App Platform UI: Configure in "Build Arguments" during deployment
 # =============================================================================
-ARG INSTALL_NODE=true
+ARG INSTALL_NODE=false
 ARG NODE_VERSIONS="24 22"
 ARG NODE_DEFAULT_VERSION=24
 
-ARG INSTALL_PYTHON=true
+ARG INSTALL_PYTHON=false
 ARG PYTHON_VERSIONS="3.12 3.13"
 ARG PYTHON_DEFAULT_VERSION=3.13
 
@@ -40,9 +40,9 @@ ARG GOLANG_VERSION=1.23.4
 
 ARG INSTALL_RUST=false
 
-ARG INSTALL_RUBY=false
-ARG RUBY_VERSIONS="3.4 3.3"
-ARG DEFAULT_RUBY="3.4"
+ARG INSTALL_RUBY=true
+ARG RUBY_VERSIONS="3.4.7 3.3.6"
+ARG DEFAULT_RUBY="3.4.7"
 
 ARG INSTALL_POSTGRES=true
 ARG INSTALL_MONGODB=false
@@ -257,7 +257,14 @@ RUN if [ "$INSTALL_RUST" = "true" ]; then \
 
 RUN if [ "$INSTALL_RUBY" = "true" ]; then \
         cp -r /root/.rbenv /home/devcontainer/.rbenv \
-        && chown -R devcontainer:devcontainer /home/devcontainer/.rbenv; \
+        && chown -R devcontainer:devcontainer /home/devcontainer/.rbenv \
+        # Fix shebang paths in Ruby binaries and scripts to use devcontainer path instead of root
+        && if [ -d "/home/devcontainer/.rbenv/versions" ]; then \
+            find /home/devcontainer/.rbenv/versions -type f -name "*.rb" -exec sed -i "s|#!/root/.rbenv/|#!/home/devcontainer/.rbenv/|g" {} + 2>/dev/null || true \
+            && find /home/devcontainer/.rbenv/versions -type f -executable -exec grep -l "^#.*/root/.rbenv/" {} \; 2>/dev/null | while read file; do \
+                sed -i "s|/root/.rbenv/|/home/devcontainer/.rbenv/|g" "$file" 2>/dev/null || true; \
+            done; \
+        fi; \
     fi
 
 
