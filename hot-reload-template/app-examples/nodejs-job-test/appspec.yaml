@@ -8,7 +8,7 @@ ingress:
     match:
       path:
         prefix: /
-name: nodejs-hot-reload-job-test
+name: nodejs-job-test
 region: nyc
 services:
 - dockerfile_path: hot-reload-template/Dockerfile
@@ -26,7 +26,7 @@ services:
     value: https://github.com/bikram20/do-app-platform-ai-dev-workflow
   - key: GITHUB_REPO_FOLDER
     scope: RUN_AND_BUILD_TIME
-    value: nodejs-hot-reload-job-test
+    value: hot-reload-template/app-examples/nodejs-job-test
   - key: GITHUB_BRANCH
     scope: RUN_AND_BUILD_TIME
     value: main

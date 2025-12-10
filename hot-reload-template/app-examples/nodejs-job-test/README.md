@@ -1,6 +1,6 @@
-# Node.js Hot Reload Job Test
+# Node.js Job Test
 
-Test application for validating PRE_DEPLOY and POST_DEPLOY job functionality with the hot-reload template.
+Express.js test application for validating PRE_DEPLOY and POST_DEPLOY job functionality with the hot-reload template.
 
 ## Overview
 
@@ -14,10 +14,11 @@ This is a simple Express.js application designed to test the pre/post deploy job
 ## Project Structure
 
 ```
-nodejs-hot-reload-job-test/
+nodejs-job-test/
 ├── index.js                    # Express app (web server)
 ├── package.json                # Dependencies
 ├── dev_startup.sh             # Hot-reload startup script
+├── .env.example               # Environment variables template
 ├── scripts/
 │   ├── pre-deploy/
 │   │   └── migrate.sh         # PRE_DEPLOY job (database migration simulation)
@@ -81,7 +82,7 @@ docker build -f hot-reload-template/Dockerfile \
 ```bash
 docker run -p 8080:8080 \
   -e GITHUB_REPO_URL=https://github.com/bikram20/do-app-platform-ai-dev-workflow \
-  -e GITHUB_REPO_FOLDER=nodejs-hot-reload-job-test \
+  -e GITHUB_REPO_FOLDER=hot-reload-template/app-examples/nodejs-job-test \
   -e DEV_START_COMMAND="bash dev_startup.sh" \
   hot-reload-test:latest
 ```
@@ -151,14 +152,14 @@ This test requires the repo to be a git repository with commits:
 
 ```bash
 # Initialize git repo
-cd nodejs-hot-reload-job-test
+cd hot-reload-template/app-examples/nodejs-job-test
 git init
 git add .
 git commit -m "Initial commit"
 
 # Run container
 docker run -p 8080:8080 \
-  -v /workspaces/app/nodejs-hot-reload-job-test:/workspaces/app \
+  -v /workspaces/app/hot-reload-template/app-examples/nodejs-job-test:/workspaces/app \
   -e GITHUB_REPO_URL="" \
   -e WORKSPACE_PATH=/workspaces/app \
   -e DEV_START_COMMAND="bash dev_startup.sh" \
@@ -206,7 +207,7 @@ The `appspec.yaml` is already configured for monorepo deployment:
 # This repo should be part of the main monorepo
 # The hot-reload template will sync from:
 # - GITHUB_REPO_URL: https://github.com/bikram20/do-app-platform-ai-dev-workflow
-# - GITHUB_REPO_FOLDER: nodejs-hot-reload-job-test
+# - GITHUB_REPO_FOLDER: hot-reload-template/app-examples/nodejs-job-test
 
 # Deploy using doctl
 doctl apps create --spec appspec.yaml

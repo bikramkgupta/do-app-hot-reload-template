@@ -106,6 +106,35 @@ ENABLE_DEV_HEALTH=false
 - Bundler + migrations handled by `dev_startup.sh`
 - ⚠️ **Testing environment** - NOT for production
 
+---
+
+#### Node.js Job Test (PRE/POST Deploy Jobs)
+**Copy from**: [nodejs-job-test/.env.example](nodejs-job-test/.env.example)
+```bash
+GITHUB_REPO_URL=https://github.com/bikram20/do-app-platform-ai-dev-workflow
+GITHUB_REPO_FOLDER=hot-reload-template/app-examples/nodejs-job-test
+GITHUB_BRANCH=main
+INSTALL_NODE=true
+INSTALL_PYTHON=false
+INSTALL_GOLANG=false
+DEV_START_COMMAND=bash dev_startup.sh
+GITHUB_SYNC_INTERVAL=30
+ENABLE_DEV_HEALTH=false
+PRE_DEPLOY_FOLDER=scripts/pre-deploy
+PRE_DEPLOY_COMMAND=bash migrate.sh
+PRE_DEPLOY_TIMEOUT=300
+POST_DEPLOY_FOLDER=scripts/post-deploy
+POST_DEPLOY_COMMAND=bash seed.sh
+POST_DEPLOY_TIMEOUT=300
+```
+
+**What you get**:
+- Express.js test app demonstrating PRE_DEPLOY and POST_DEPLOY job functionality
+- Database migration simulation (PRE_DEPLOY - strict mode)
+- Data seeding simulation (POST_DEPLOY - lenient mode)
+- Commit change detection for job execution
+- ⚠️ **Testing environment** - NOT for production
+
 **Important Notes**:
 - All examples use the **same deploy button** - you choose which app via environment variables
 - `deploy_on_push: true` triggers rebuilds when the hot-reload-template changes
@@ -116,8 +145,9 @@ ENABLE_DEV_HEALTH=false
 
 - **go-sample-app/** - Go application with hot-reload
 - **python-fastapi-sample/** - Python FastAPI application with hot-reload
-- **nextjs-sample-app/** - Next.js application with hot-reload
+- **nextjs-sample-app/** - Next.js application with hot-reload (default)
 - **ruby-rails-sample/** - Rails 8 application with hot-reload
+- **nodejs-job-test/** - Node.js/Express app demonstrating PRE_DEPLOY and POST_DEPLOY jobs
 
 ## Important Notes
 
