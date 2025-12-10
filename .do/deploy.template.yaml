@@ -17,7 +17,7 @@ spec:
 
       # GitHub repository (this repository will be used for the dev environment itself)
       github:
-        repo: bikram20/do-app-platform-ai-dev-workflow
+        repo: https://github.com/bikram20/do-app-platform-ai-dev-workflow
         branch: main
         deploy_on_push: true
 
