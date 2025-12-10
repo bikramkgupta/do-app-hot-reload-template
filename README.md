@@ -5,6 +5,7 @@
 Designed for AI assistants like Claude Code, Cursor, Codex, VS Code Copilot and Antigravity to provide a hands-free experience for rapid iteration at scale.
 
 [![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-platform-ai-dev-workflow/tree/main)
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-platform-ai-dev-workflow/tree/main)
 
 ## 🎯 What Is This?
 
