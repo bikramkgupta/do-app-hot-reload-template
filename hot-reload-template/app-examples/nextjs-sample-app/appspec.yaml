@@ -40,9 +40,38 @@ services:
   - key: ENABLE_DEV_HEALTH
     scope: RUN_AND_BUILD_TIME
     value: "false"
+  # === Pre-Deploy Job Configuration (Optional) ===
+  # Uncomment to enable PRE_DEPLOY jobs
+  # - key: PRE_DEPLOY_REPO_URL
+  #   scope: RUN_AND_BUILD_TIME
+  #   value: ""  # Empty = use main app repo
+  # - key: PRE_DEPLOY_FOLDER
+  #   scope: RUN_AND_BUILD_TIME
+  #   value: scripts/pre-deploy
+  # - key: PRE_DEPLOY_COMMAND
+  #   scope: RUN_AND_BUILD_TIME
+  #   value: bash migrate.sh
+  # - key: PRE_DEPLOY_TIMEOUT
+  #   scope: RUN_AND_BUILD_TIME
+  #   value: "60"
+  # === Post-Deploy Job Configuration (Optional) ===
+  # Uncomment to enable POST_DEPLOY jobs
+  # - key: POST_DEPLOY_REPO_URL
+  #   scope: RUN_AND_BUILD_TIME
+  #   value: ""  # Empty = use main app repo
+  # - key: POST_DEPLOY_FOLDER
+  #   scope: RUN_AND_BUILD_TIME
+  #   value: scripts/post-deploy
+  # - key: POST_DEPLOY_COMMAND
+  #   scope: RUN_AND_BUILD_TIME
+  #   value: bash seed.sh
+  # - key: POST_DEPLOY_TIMEOUT
+  #   scope: RUN_AND_BUILD_TIME
+  #   value: "60"
   github:
     branch: main
     repo: bikram20/do-app-platform-ai-dev-workflow
+    deploy_on_push: true
   health_check:
     failure_threshold: 5
     http_path: /api/health

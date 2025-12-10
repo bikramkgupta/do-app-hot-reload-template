@@ -127,6 +127,35 @@ services:
         value: ""
         scope: RUN_TIME
 
+      # === Pre-Deploy Job Configuration ===
+      # Jobs execute only when git commit changes (not every sync)
+      - key: PRE_DEPLOY_REPO_URL
+        value: ""
+        scope: RUN_TIME
+      - key: PRE_DEPLOY_FOLDER
+        value: ""
+        scope: RUN_TIME
+      - key: PRE_DEPLOY_COMMAND
+        value: ""
+        scope: RUN_TIME
+      - key: PRE_DEPLOY_TIMEOUT
+        value: "300"
+        scope: RUN_TIME
+
+      # === Post-Deploy Job Configuration ===
+      - key: POST_DEPLOY_REPO_URL
+        value: ""
+        scope: RUN_TIME
+      - key: POST_DEPLOY_FOLDER
+        value: ""
+        scope: RUN_TIME
+      - key: POST_DEPLOY_COMMAND
+        value: ""
+        scope: RUN_TIME
+      - key: POST_DEPLOY_TIMEOUT
+        value: "300"
+        scope: RUN_TIME
+
 # Optional: Add alerts
 alerts:
   - rule: DEPLOYMENT_FAILED

@@ -87,6 +87,22 @@ else
 fi
 echo ""
 
+# Execute PRE_DEPLOY job if configured (initial bootstrap)
+if [ -n "${PRE_DEPLOY_COMMAND:-}" ]; then
+    echo "=========================================="
+    echo "Executing Initial PRE_DEPLOY Job..."
+    echo "=========================================="
+    echo ""
+
+    if /usr/local/bin/job-manager.sh execute PRE_DEPLOY; then
+        echo "✓ Initial PRE_DEPLOY job completed successfully"
+    else
+        echo "ERROR: Initial PRE_DEPLOY job failed. Container cannot start."
+        exit 1  # Strict mode - must succeed
+    fi
+    echo ""
+fi
+
 # Start GitHub sync loop in background (continuous polling)
 echo "Starting continuous sync service..."
 /usr/local/bin/github-sync.sh &
@@ -176,6 +192,13 @@ if [ -n "${DEV_START_COMMAND:-}" ]; then
     # Load Ruby if installed
     if [ -d "$HOME/.rbenv" ]; then
         ENV_SETUP="${ENV_SETUP}export PATH=\"\$HOME/.rbenv/bin:\$PATH\" && eval \"\$(rbenv init - bash)\" && "
+    fi
+
+    # Execute POST_DEPLOY job in background (initial bootstrap)
+    if [ -n "${POST_DEPLOY_COMMAND:-}" ]; then
+        echo "Executing Initial POST_DEPLOY Job in background..."
+        (/usr/local/bin/job-manager.sh execute POST_DEPLOY &)
+        echo ""
     fi
 
     # Execute command with environment loaded

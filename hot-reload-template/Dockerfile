@@ -302,6 +302,10 @@ RUN chmod +x /usr/local/bin/github-sync.sh
 COPY --chown=devcontainer:devcontainer hot-reload-template/scripts/startup.sh /usr/local/bin/startup.sh
 RUN chmod +x /usr/local/bin/startup.sh
 
+# Job manager script
+COPY --chown=devcontainer:devcontainer hot-reload-template/scripts/job-manager.sh /usr/local/bin/job-manager.sh
+RUN chmod +x /usr/local/bin/job-manager.sh
+
 # Dev health check server (built from source in stage 1)
 COPY --from=health-builder /build/health/dev-health-server /usr/local/bin/dev-health-server
 RUN chmod +x /usr/local/bin/dev-health-server

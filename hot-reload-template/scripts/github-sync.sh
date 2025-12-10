@@ -450,6 +450,62 @@ sync_repo() {
             fi
         fi
     fi
+
+    # Execute deploy jobs if commit changed
+    execute_deploy_jobs
+}
+
+# Execute deploy jobs when commit changes
+execute_deploy_jobs() {
+    # Acquire lock to prevent concurrent job execution
+    local lock_dir="/tmp/job-execution.lock"
+
+    if ! mkdir "$lock_dir" 2>/dev/null; then
+        log_info "Job execution in progress by another process. Skipping."
+        return 0
+    fi
+
+    trap 'rm -rf "$lock_dir"' EXIT
+
+    # Check if commit actually changed
+    if ! /usr/local/bin/job-manager.sh check_commit_changed; then
+        log_info "Repository commit unchanged. Skipping deploy jobs."
+        rm -rf "$lock_dir"
+        trap - EXIT
+        return 0
+    fi
+
+    log_info "Repository commit changed. Executing deploy jobs..."
+
+    # Execute PRE_DEPLOY (strict mode)
+    if [ -n "${PRE_DEPLOY_COMMAND:-}" ]; then
+        log_info "Executing PRE_DEPLOY job..."
+        if /usr/local/bin/job-manager.sh execute PRE_DEPLOY; then
+            log_info "PRE_DEPLOY job completed successfully"
+        else
+            log_error "PRE_DEPLOY job failed. Not updating commit SHA (will retry on next sync)."
+            rm -rf "$lock_dir"
+            trap - EXIT
+            return 1
+        fi
+    fi
+
+    # Execute POST_DEPLOY (lenient mode)
+    if [ -n "${POST_DEPLOY_COMMAND:-}" ]; then
+        log_info "Executing POST_DEPLOY job..."
+        if /usr/local/bin/job-manager.sh execute POST_DEPLOY; then
+            log_info "POST_DEPLOY job completed successfully"
+        else
+            log_warn "POST_DEPLOY job failed (lenient mode - continuing)"
+        fi
+    fi
+
+    # Update commit tracking only after successful execution
+    /usr/local/bin/job-manager.sh update_last_job_commit
+    log_info "Deploy jobs completed. Commit SHA updated."
+
+    rm -rf "$lock_dir"
+    trap - EXIT
 }
 
 # Main sync loop

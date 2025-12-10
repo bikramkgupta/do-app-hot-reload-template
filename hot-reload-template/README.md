@@ -287,6 +287,76 @@ docker run -p 9090:9090 -p 8080:8080 \
 - **DEV_START_COMMAND blank:** Container will stay running and healthy. Configure `GITHUB_REPO_URL` and `DEV_START_COMMAND` (or add `dev_startup.sh` to your repo) to start your app.
 
 
+## Pre-Deploy and Post-Deploy Jobs
+
+Execute scripts at deployment lifecycle points. Jobs run **only when git commit changes** (not every 30s sync).
+
+### PRE_DEPLOY (Strict Mode)
+
+Runs **before** app starts. Must succeed or container exits.
+
+**Use for:**
+- Database migrations
+- Schema updates
+- Environment validation
+
+**Configuration:**
+```yaml
+envs:
+  - key: PRE_DEPLOY_FOLDER
+    value: scripts/pre-deploy
+  - key: PRE_DEPLOY_COMMAND
+    value: bash migrate.sh
+  - key: PRE_DEPLOY_TIMEOUT
+    value: "300"  # seconds
+```
+
+### POST_DEPLOY (Lenient Mode)
+
+Runs **after** app starts (background). Failure logged but app continues.
+
+**Use for:**
+- Data seeding
+- Cache warming
+- Notifications
+
+**Configuration:**
+```yaml
+envs:
+  - key: POST_DEPLOY_FOLDER
+    value: scripts/post-deploy
+  - key: POST_DEPLOY_COMMAND
+    value: bash seed.sh
+  - key: POST_DEPLOY_TIMEOUT
+    value: "300"  # seconds
+```
+
+### When Jobs Execute
+
+- **Initial startup**: Always runs before/after app starts
+- **Continuous sync (every 30s)**:
+  - Commit changed → Execute jobs
+  - Commit unchanged → Skip jobs
+
+### Examples
+
+See working examples in:
+- `app-examples/nextjs-sample-app/scripts/` - Example job scripts with detailed README
+- `nodejs-hot-reload-job-test/` - Complete test application
+
+**Multi-repo pattern** (jobs in separate repo):
+```yaml
+envs:
+  - key: PRE_DEPLOY_REPO_URL
+    value: https://github.com/user/job-scripts
+  - key: PRE_DEPLOY_FOLDER
+    value: migrations
+  - key: PRE_DEPLOY_COMMAND
+    value: bash migrate.sh
+```
+
+For comprehensive guide, see `docs/JOBS.md`.
+
 ## Advanced Customization
 
 For deeper tweaks (new runtimes, custom health/sync logic): see [`CUSTOMIZATION.md`](CUSTOMIZATION.md)
