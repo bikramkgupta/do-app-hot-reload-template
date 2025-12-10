@@ -26,8 +26,8 @@ spec:
       instance_size_slug: apps-s-1vcpu-1gb
 
       # Internal port for application
-      internal_ports:
-      - 8080
+      #internal_ports:
+      #- 8080
 
       # HTTP port for your application traffic (health check uses dedicated port below)
       http_port: 8080
