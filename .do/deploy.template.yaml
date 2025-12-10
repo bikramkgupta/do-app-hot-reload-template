@@ -18,7 +18,7 @@ spec:
       # GitHub repository (this repository will be used for the dev environment itself)
       git:
         branch: main
-        repo_clone_url: https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main
+        repo_clone_url: https://github.com/bikramkgupta/do-app-platform-ai-dev-workflow/tree/main
 
       # Service type - worker with HTTP health check
       instance_count: 1
@@ -83,7 +83,7 @@ spec:
         # === GitHub Repository to Clone ===
         # Default: Next.js sample app (ready to run)
         - key: GITHUB_REPO_URL
-          value: "https://github.com/bikram20/do-app-platform-ai-dev-workflow"
+          value: "https://github.com/bikramkgupta/do-app-platform-ai-dev-workflow"
           scope: RUN_TIME
 
         # === GitHub Authentication ===
