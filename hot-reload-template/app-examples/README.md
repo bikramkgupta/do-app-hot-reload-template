@@ -6,7 +6,7 @@ This folder contains working sample applications that demonstrate how to use the
 
 Each subfolder contains a complete, working sample application that:
 - Uses the enhanced `dev_startup.sh` scripts from `hot-reload-template/examples/`
-- Demonstrates hot-reload setup for a specific framework (Go, Python/FastAPI, Next.js)
+- Demonstrates hot-reload setup for a specific framework (Go, Python/FastAPI, Next.js, Rails)
 - Includes a complete `appspec.yaml` configuration for **testing/hot-reload** environment
 
 ## Quick Deploy
@@ -84,6 +84,28 @@ ENABLE_DEV_HEALTH=false
 
 ---
 
+#### Ruby on Rails Sample App
+Use these values:
+```bash
+GITHUB_REPO_URL=https://github.com/bikram20/do-app-platform-ai-dev-workflow
+GITHUB_REPO_FOLDER=hot-reload-template/app-examples/ruby-rails-sample
+GITHUB_BRANCH=main
+INSTALL_NODE=false
+INSTALL_PYTHON=false
+INSTALL_GOLANG=false
+INSTALL_RUBY=true
+RUBY_VERSIONS="3.4.7"
+DEFAULT_RUBY="3.4.7"
+DEV_START_COMMAND=bash dev_startup.sh
+GITHUB_SYNC_INTERVAL=30
+ENABLE_DEV_HEALTH=false
+```
+
+**What you get**:
+- Hot-reload Rails 8 app with SQLite and `/health` endpoint
+- Bundler + migrations handled by `dev_startup.sh`
+- ⚠️ **Testing environment** - NOT for production
+
 **Important Notes**:
 - All examples use the **same deploy button** - you choose which app via environment variables
 - `deploy_on_push: true` triggers rebuilds when the hot-reload-template changes
@@ -95,6 +117,7 @@ ENABLE_DEV_HEALTH=false
 - **go-sample-app/** - Go application with hot-reload
 - **python-fastapi-sample/** - Python FastAPI application with hot-reload
 - **nextjs-sample-app/** - Next.js application with hot-reload
+- **ruby-rails-sample/** - Rails 8 application with hot-reload
 
 ## Important Notes
 

@@ -100,8 +100,8 @@ Configure these in **App Platform UI → Settings → Build Arguments**. Choose 
 | `INSTALL_GOLANG` | `false` | Go apps |
 | `INSTALL_RUST` | `false` | Rust apps |
 | `INSTALL_RUBY` | `false` | Ruby, Rails, Sinatra apps |
-| `RUBY_VERSIONS` | `"3.4 3.3"` | Ruby versions to install (space-separated) |
-| `DEFAULT_RUBY` | `"3.4"` | Default Ruby version |
+| `RUBY_VERSIONS` | `"3.4.7 3.3.6"` | Ruby versions to install (space-separated) |
+| `DEFAULT_RUBY` | `"3.4.7"` | Default Ruby version |
 | `INSTALL_POSTGRES` | `true` | PostgreSQL client tools (psql, libpq) - not a database server |
 | `INSTALL_MONGODB` | `false` | MongoDB client tools (mongosh) - not a database server |
 | `INSTALL_MYSQL` | `false` | MySQL client tools (mysql cli) - not a database server |
@@ -149,7 +149,7 @@ Complete working sample applications are available in [`app-examples/`](app-exam
 - **`app-examples/go-sample-app/`** - Go application with hot-reload
 - **`app-examples/python-fastapi-sample/`** - Python FastAPI application with hot-reload
 - **`app-examples/nextjs-sample-app/`** - Next.js application with hot-reload
-- **`app-examples/rails-todo-app/`** - Ruby on Rails to-do application with hot-reload
+- **`app-examples/ruby-rails-sample/`** - Rails application with hot-reload
 
 Each example includes:
 - Complete `dev_startup.sh` script (from `examples/`)
@@ -163,7 +163,7 @@ All examples use the same deploy button. After deploying, configure which app to
 - **Go:** [go-sample-app](https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/hot-reload-template/app-examples/go-sample-app) - See [.env.example](https://github.com/bikram20/do-app-platform-ai-dev-workflow/blob/main/hot-reload-template/app-examples/go-sample-app/.env.example)
 - **Python FastAPI:** [python-fastapi-sample](https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/hot-reload-template/app-examples/python-fastapi-sample) - See [.env.example](https://github.com/bikram20/do-app-platform-ai-dev-workflow/blob/main/hot-reload-template/app-examples/python-fastapi-sample/.env.example)
 - **Next.js:** [nextjs-sample-app](https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/hot-reload-template/app-examples/nextjs-sample-app) - See [.env.example](https://github.com/bikram20/do-app-platform-ai-dev-workflow/blob/main/hot-reload-template/app-examples/nextjs-sample-app/.env.example)
-- **Ruby on Rails:** [rails-todo-app](https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/hot-reload-template/app-examples/rails-todo-app) - Complete to-do app with Bootstrap UI
+- **Rails:** [ruby-rails-sample](https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/hot-reload-template/app-examples/ruby-rails-sample)
 
 **Deploy**: Click the deploy button above, then add environment variables from the `.env.example` file for your chosen framework.
 
@@ -176,7 +176,7 @@ This template includes production-ready `dev_startup.sh` examples in the `exampl
 - **`examples/dev_startup.sh.nextjs`** - Handles npm peer deps, package-lock.json conflicts, and hard rebuilds
 - **`examples/dev_startup.sh.python`** - Handles uv.lock/poetry.lock conflicts and hard rebuilds
 - **`examples/dev_startup.sh.golang`** - Handles go.sum conflicts and hard rebuilds
-- **`app-examples/rails-todo-app/dev_startup.sh`** - Handles Gemfile.lock conflicts, auto-migrations, and hot-reload
+- **Rails:** See `app-examples/ruby-rails-sample/dev_startup.sh` for Gemfile.lock handling, migrations, and hot-reload
 
 These examples are proven to work and include automatic conflict resolution and error recovery. Copy the appropriate one to your repository as `dev_startup.sh`.
 

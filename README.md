@@ -133,7 +133,7 @@ do-app-platform-ai-dev-workflow/
 - Deploy it, point it to your repo, get 15-30s sync cycles
 
 **Starting a new app?**
-- Copy from `hot-reload-template/app-examples/` (go, python, nextjs)
+- Copy from `hot-reload-template/app-examples/` (Go, Python, Next.js, Rails)
 - You get: working `dev_startup.sh`, `appspec.yaml` for testing
 
 **Full workflow?**

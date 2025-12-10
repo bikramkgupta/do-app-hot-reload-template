@@ -8,7 +8,7 @@ Docs map: `README.md` = how humans use it, `CUSTOMIZATION.md` = how to fork/exte
 
 - App repo URL (and GitHub token if private).
 - Startup plan: preferred `DEV_START_COMMAND` (default `bash dev_startup.sh`) or confirm repo already has `dev_startup.sh`/`startup.sh`.
-- Runtimes to install via build args (`INSTALL_NODE/PYTHON/GOLANG/RUST`, DB clients).
+- Runtimes to install via build args (`INSTALL_NODE/PYTHON/GOLANG/RUST/RUBY`, DB clients).
 - Health check choice: default `/dev_health` on port `9090` is for first deploy only (built-in Go binary, always available); plan to point checks to the app's endpoint/port and disable the built-in server afterward via `ENABLE_DEV_HEALTH=false`.
 - App name/region/size (for `app.yaml`), sync interval if they want non-default.
 
