@@ -59,7 +59,13 @@ sync_monorepo_folder() {
     # Use rsync to sync folder contents (not the folder itself)
     # --delete ensures removed files are also removed from workspace
     # -a preserves permissions and timestamps
-    if rsync -a --delete "$cache_dir/$folder_path/" "$target_workspace/"; then
+    # Exclude build artifacts and dependencies that should be managed by dev scripts
+    if rsync -a --delete \
+        --exclude 'node_modules' \
+        --exclude '.next' \
+        --exclude '__pycache__' \
+        --exclude '*.pyc' \
+        "$cache_dir/$folder_path/" "$target_workspace/"; then
         log_info "Folder sync completed successfully"
         return 0
     else
