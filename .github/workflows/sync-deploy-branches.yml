@@ -8,6 +8,10 @@ on:
   # Allow manual trigger
   workflow_dispatch:
 
+# Grant write permissions to push to branches
+permissions:
+  contents: write
+
 jobs:
   sync-branches:
     runs-on: ubuntu-latest
