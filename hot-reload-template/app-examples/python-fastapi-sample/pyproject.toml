@@ -1,0 +1,18 @@
+[project]
+name = "python-fastapi-sample"
+version = "0.1.0"
+description = "FastAPI sample app for DigitalOcean App Platform"
+authors = [{name = "Bikram Gupta"}]
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "httpx>=0.28.1",
+  "bcrypt",
+  "uvicorn",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.uv]
+package = true

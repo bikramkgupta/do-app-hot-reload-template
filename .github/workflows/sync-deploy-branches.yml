@@ -1,0 +1,105 @@
+name: Sync Deploy Branches
+
+# Trigger on push to main branch
+on:
+  push:
+    branches:
+      - main
+  # Allow manual trigger
+  workflow_dispatch:
+
+# Grant write permissions to push to branches
+permissions:
+  contents: write
+
+jobs:
+  sync-branches:
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Don't fail all if one branch fails
+      fail-fast: false
+      matrix:
+        branch:
+          - deploy-go
+          - deploy-python
+          - deploy-rails
+          - deploy-nodejs
+          - deploy-nextjs
+          - deploy-blank
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0  # Full history for merge
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync ${{ matrix.branch }} with main
+        run: |
+          BRANCH="${{ matrix.branch }}"
+          echo "=== Syncing $BRANCH with main ==="
+
+          # Fetch the deploy branch
+          git fetch origin "$BRANCH"
+
+          # Checkout the deploy branch
+          git checkout "$BRANCH"
+
+          # Save the branch-specific deploy.template.yaml
+          cp .do/deploy.template.yaml /tmp/deploy-template-backup.yaml
+          echo "Saved $BRANCH specific .do/deploy.template.yaml"
+
+          # Merge main into the deploy branch
+          # Use -X theirs for conflicts in files we'll restore anyway
+          if git merge origin/main --no-edit -m "Auto-sync with main branch"; then
+            echo "Merge successful"
+          else
+            echo "Merge had conflicts, resolving..."
+            # For hot-reload-template config files, take main's version
+            git checkout --theirs hot-reload-template/.do/deploy.template.yaml 2>/dev/null || true
+            git checkout --theirs hot-reload-template/app.yaml 2>/dev/null || true
+            git checkout --theirs hot-reload-template/scripts/github-sync.sh 2>/dev/null || true
+            git add -A
+          fi
+
+          # Restore the branch-specific .do/deploy.template.yaml
+          cp /tmp/deploy-template-backup.yaml .do/deploy.template.yaml
+          git add .do/deploy.template.yaml
+
+          # Check if there are changes to commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit after restoring deploy.template.yaml"
+          else
+            git commit --amend --no-edit || git commit -m "Restore $BRANCH specific deploy.template.yaml"
+          fi
+
+          # Push the updated branch
+          git push origin "$BRANCH"
+          echo "=== Successfully synced $BRANCH ==="
+
+      - name: Verify sync
+        run: |
+          BRANCH="${{ matrix.branch }}"
+          echo "=== Verification for $BRANCH ==="
+
+          # Check Dockerfile matches main
+          MAIN_HASH=$(git show origin/main:hot-reload-template/Dockerfile | md5sum | cut -d' ' -f1)
+          BRANCH_HASH=$(git show origin/$BRANCH:hot-reload-template/Dockerfile | md5sum | cut -d' ' -f1)
+
+          if [ "$MAIN_HASH" = "$BRANCH_HASH" ]; then
+            echo "✓ Dockerfile matches main"
+          else
+            echo "✗ Dockerfile mismatch!"
+            exit 1
+          fi
+
+          # Check region is syd1
+          REGION=$(git show origin/$BRANCH:.do/deploy.template.yaml | grep -E '^\s+region:' | head -1)
+          echo "Region: $REGION"

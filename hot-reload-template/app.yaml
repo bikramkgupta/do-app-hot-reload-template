@@ -1,0 +1,123 @@
+#
+# DigitalOcean App Platform Specification
+# Simplified Development Environment with GitHub Sync
+#
+# This spec deploys a dev environment that automatically syncs a GitHub
+# repository and runs your application for fast iteration cycles.
+#
+
+name: dev-environment
+region: syd1
+
+services:
+  - name: dev-workspace
+    dockerfile_path: hot-reload-template/Dockerfile
+    github:
+      repo: bikram20/do-app-platform-ai-dev-workflow
+      branch: main
+      deploy_on_push: true
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+    http_port: 8080
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 5
+      port: 8080
+    envs:
+      # === Build Arguments (BUILD_TIME scope) ===
+      - key: INSTALL_NODE
+        value: "true"
+        scope: BUILD_TIME
+      - key: INSTALL_PYTHON
+        value: "false"
+        scope: BUILD_TIME
+      - key: INSTALL_GOLANG
+        value: "false"
+        scope: BUILD_TIME
+      - key: INSTALL_RUST
+        value: "false"
+        scope: BUILD_TIME
+      - key: INSTALL_RUBY
+        value: "false"
+        scope: BUILD_TIME
+      - key: RUBY_VERSIONS
+        value: "3.4 3.3"
+        scope: BUILD_TIME
+      - key: DEFAULT_RUBY
+        value: "3.4"
+        scope: BUILD_TIME
+      - key: INSTALL_POSTGRES
+        value: "true"
+        scope: BUILD_TIME
+      - key: INSTALL_MONGODB
+        value: "false"
+        scope: BUILD_TIME
+      - key: INSTALL_MYSQL
+        value: "false"
+        scope: BUILD_TIME
+      # === Runtime Environment Variables ===
+      - key: APPPLAT_BASE_TEMPLATE
+        value: "hot-reload-template"
+        scope: RUN_TIME
+      - key: APPPLAT_TEMPLATE_TYPE
+        value: "base"
+        scope: RUN_TIME
+      - key: APPPLAT_TEMPLATE_VERSION
+        value: "1.0.0"
+        scope: RUN_TIME
+      - key: GITHUB_REPO_URL
+        value: "https://github.com/bikram20/do-app-platform-ai-dev-workflow"
+        scope: RUN_TIME
+      - key: GITHUB_TOKEN
+        value: ""
+        scope: RUN_TIME
+        type: SECRET
+      - key: WORKSPACE_PATH
+        value: "/workspaces/app"
+        scope: RUN_TIME
+      - key: GITHUB_SYNC_INTERVAL
+        value: "30"
+        scope: RUN_TIME
+      - key: ENABLE_DEV_HEALTH
+        value: "false"
+        scope: RUN_TIME
+      - key: DEV_START_COMMAND
+        value: "bash dev_startup.sh"
+        scope: RUN_TIME
+      - key: GITHUB_REPO_FOLDER
+        value: "hot-reload-template/app-examples/nextjs-sample-app"
+        scope: RUN_TIME
+      - key: GITHUB_BRANCH
+        value: "main"
+        scope: RUN_TIME
+      - key: PRE_DEPLOY_REPO_URL
+        value: ""
+        scope: RUN_TIME
+      - key: PRE_DEPLOY_FOLDER
+        value: "scripts/pre-deploy"
+        scope: RUN_TIME
+      - key: PRE_DEPLOY_COMMAND
+        value: "bash migrate.sh"
+        scope: RUN_TIME
+      - key: PRE_DEPLOY_TIMEOUT
+        value: "300"
+        scope: RUN_TIME
+      - key: POST_DEPLOY_REPO_URL
+        value: ""
+        scope: RUN_TIME
+      - key: POST_DEPLOY_FOLDER
+        value: "scripts/post-deploy"
+        scope: RUN_TIME
+      - key: POST_DEPLOY_COMMAND
+        value: "bash seed.sh"
+        scope: RUN_TIME
+      - key: POST_DEPLOY_TIMEOUT
+        value: "300"
+        scope: RUN_TIME
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED

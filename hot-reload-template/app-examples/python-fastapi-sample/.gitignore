@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv
+.uv
+*.egg-info
+.package_hash
+.deps_hash
+.test_server.pid
+.test_server.log
