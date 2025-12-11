@@ -65,6 +65,11 @@ sync_monorepo_folder() {
         --exclude '.next' \
         --exclude '__pycache__' \
         --exclude '*.pyc' \
+        --exclude 'storage' \
+        --exclude '*.sqlite3' \
+        --exclude '*.sqlite3-*' \
+        --exclude 'vendor/bundle' \
+        --exclude '.bundle' \
         "$cache_dir/$folder_path/" "$target_workspace/"; then
         log_info "Folder sync completed successfully"
         return 0
