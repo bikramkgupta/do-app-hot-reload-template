@@ -8,7 +8,7 @@ spec:
   #
 
   name: dev-environment
-  region: nyc
+  region: syd1
 
   services:
     - name: dev-workspace
@@ -89,7 +89,7 @@ spec:
           scope: RUN_TIME
 
         - key: GITHUB_SYNC_INTERVAL
-          value: "60"
+          value: "15"
           scope: RUN_TIME
 
         # === Dev Health Server ===

@@ -78,7 +78,7 @@ Deploy your own application - just point to your GitHub repo.
 graph TD
     subgraph Template["Hot Reload Template"]
         Config["Configure Runtimes<br/>Node.js / Python / Go / Ruby"]
-        Sync["GitHub Sync Daemon<br/>Pulls every 30s"]
+        Sync["GitHub Sync Daemon<br/>Pulls every 15s"]
         Startup["dev_startup.sh<br/>Your startup script"]
         PreHook["Pre-Deploy Hook<br/>scripts/pre-deploy"]
         PostHook["Post-Deploy Hook<br/>scripts/post-deploy"]
@@ -107,7 +107,7 @@ graph TD
 3. **Point to Your Code** - Set `GITHUB_REPO_URL` and `GITHUB_REPO_FOLDER` (or use default Next.js sample)
 4. **Startup Script** - Template runs `dev_startup.sh` from your repo (handles deps, hot reload)
 5. **Hooks** - Optional `scripts/pre-deploy` and `scripts/post-deploy` run on code changes
-6. **Sync** - Changes sync every 30s, dev server auto-restarts
+6. **Sync** - Changes sync every 15s, dev server auto-restarts
 
 ## 2-Minute Quickstart
 
@@ -122,7 +122,7 @@ graph TD
    - `DEV_START_COMMAND` → `bash dev_startup.sh`
    - Pre/post deploy hooks configured
 
-**That's it!** You now have a working hot-reload environment. Make changes to the Next.js sample, push to GitHub, and see them appear in ~30 seconds.
+**That's it!** You now have a working hot-reload environment. Make changes to the Next.js sample, push to GitHub, and see them appear in ~15 seconds.
 
 ### Use Your Own App
 
@@ -151,7 +151,7 @@ To point the template at your own repository:
 | `GITHUB_TOKEN` | No | - | GitHub token for private repos (stored as secret) |
 | `DEV_START_COMMAND` | No | `bash dev_startup.sh` | Command to start your dev server |
 | `WORKSPACE_PATH` | No | `/workspaces/app` | Where to sync your repo |
-| `GITHUB_SYNC_INTERVAL` | No | `30` | How often to sync repo (seconds) |
+| `GITHUB_SYNC_INTERVAL` | No | `15` | How often to sync repo (seconds) |
 | `ENABLE_DEV_HEALTH` | No | `false` | Bootstrap health server; set `true` if your app doesn't have health endpoint |
 
 \* Defaults to Next.js sample app for instant demo.
@@ -241,7 +241,7 @@ envs:
 
 **When Jobs Execute:**
 - **Initial startup**: Always runs before/after app starts
-- **Continuous sync (every 30s)**: Commit changed → Execute jobs, Commit unchanged → Skip jobs
+- **Continuous sync (every 15s)**: Commit changed → Execute jobs, Commit unchanged → Skip jobs
 
 See working examples in `app-examples/nextjs-sample-app/scripts/` with detailed READMEs.
 
@@ -264,7 +264,7 @@ envs:
 1. Sync script clones full monorepo to `/tmp/monorepo-cache/`
 2. Only specified folder synced to `/workspaces/app`
 3. Your `dev_startup.sh` runs from within that folder
-4. Changes sync every 30 seconds by default
+4. Changes sync every 15 seconds by default
 
 ## Working Examples
 

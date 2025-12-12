@@ -19,7 +19,7 @@ fi
 echo "Configuration:"
 echo "  Repository: ${GITHUB_REPO_URL:-not set}"
 echo "  Workspace: ${WORKSPACE_PATH:-/workspaces/app}"
-echo "  Sync Interval: ${GITHUB_SYNC_INTERVAL:-30}s"
+echo "  Sync Interval: ${GITHUB_SYNC_INTERVAL:-15}s"
 echo ""
 
 # Display installed runtimes

@@ -30,7 +30,7 @@ This document serves as the master reference. Read this first, then consult link
 
 A **hot-reload development environment** for DigitalOcean App Platform that:
 - Clones a GitHub repository into a running container
-- Syncs code changes every 30 seconds (configurable)
+- Syncs code changes every 15 seconds (configurable)
 - Runs your dev server with hot-reload enabled
 - Supports Node.js, Python, Go, Ruby, Rust runtimes
 - Executes pre-deploy and post-deploy jobs on git commit changes
@@ -80,7 +80,7 @@ The template is infrastructure that runs their code.
 │  └────────────────────────────────────────────────┘    │
 │                      ↓                                  │
 │  ┌────────────────────────────────────────────────┐    │
-│  │ 3. CONTINUOUS SYNC (Every 30s)                 │    │
+│  │ 3. CONTINUOUS SYNC (Every 15s)                 │    │
 │  │    - git fetch + pull                          │    │
 │  │    - Check commit SHA changed                  │    │
 │  │    - If changed: Execute deploy jobs           │    │
@@ -104,7 +104,7 @@ The template is infrastructure that runs their code.
 GitHub Repo
     ↓ (git clone on startup)
 /workspaces/app
-    ↓ (git pull every 30s)
+    ↓ (git pull every 15s)
 Code Changes Detected
     ↓ (if commit SHA changed)
 Deploy Jobs Execute
@@ -122,7 +122,7 @@ User's Dev Server Reloads
 |------|---------|--------------|
 | **Dockerfile** | Multi-stage build. Installs runtimes based on `INSTALL_*` args. Compiles Go health server. | Add new runtime, change base image |
 | **scripts/startup.sh** | Container entrypoint. Orchestrates entire boot sequence. | Change startup flow, add services |
-| **scripts/github-sync.sh** | Background daemon. Clones repo, pulls changes every 30s, executes deploy jobs. | Adjust sync logic, add hooks |
+| **scripts/github-sync.sh** | Background daemon. Clones repo, pulls changes every 15s, executes deploy jobs. | Adjust sync logic, add hooks |
 | **scripts/job-manager.sh** | Executes PRE_DEPLOY and POST_DEPLOY jobs. Handles monorepo patterns. | Modify job execution logic |
 | **scripts/dev-health-server/** | Go binary (compiled during build). Provides `/dev_health` endpoint on port 9090. | Customize health endpoint |
 | **scripts/welcome-page-server/** | Go binary. Shows welcome page on port 8080 until user app starts. | Customize welcome page |
@@ -283,7 +283,7 @@ ARG INSTALL_MYSQL=false
 
 **What:** Shell scripts that run at deployment lifecycle points
 
-**When:** Only when git commit SHA changes (not every 30s sync)
+**When:** Only when git commit SHA changes (not every 15s sync)
 
 **Types:**
 - **PRE_DEPLOY (Strict):** Must succeed or container exits
@@ -325,7 +325,7 @@ envs:
 4. Execute POST_DEPLOY (background) → Can fail
 5. Start app
 
-# Every 30s sync
+# Every 15s sync
 1. git pull
 2. Check commit SHA
 3. If changed:
@@ -575,7 +575,7 @@ GITHUB_REPO_URL         # Required (except blank template)
 GITHUB_TOKEN            # Required for private repos (SECRET)
 GITHUB_BRANCH           # Default: main
 GITHUB_REPO_FOLDER      # For monorepo (e.g., "apps/backend")
-GITHUB_SYNC_INTERVAL    # Default: 30 seconds
+GITHUB_SYNC_INTERVAL    # Default: 15 seconds
 DEV_START_COMMAND       # Default: "bash dev_startup.sh"
 WORKSPACE_PATH          # Default: /workspaces/app
 ```

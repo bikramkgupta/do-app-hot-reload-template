@@ -142,7 +142,7 @@ stop_server() {
   fuser -k 8080/tcp >/dev/null 2>&1 || true
   # Fallback to lsof if fuser not available
   lsof -ti:8080 | xargs kill -9 >/dev/null 2>&1 || true
-  sleep 2
+  sleep 1
   echo "Stop complete"
 }
 

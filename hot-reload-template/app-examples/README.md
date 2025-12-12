@@ -31,13 +31,13 @@ INSTALL_NODE=false
 INSTALL_PYTHON=false
 INSTALL_GOLANG=true
 DEV_START_COMMAND=bash dev_startup.sh
-GITHUB_SYNC_INTERVAL=30
+GITHUB_SYNC_INTERVAL=15
 ENABLE_DEV_HEALTH=false
 ```
 
 **What you get**:
 - Hot-reload development environment with Air for Go
-- Changes sync every 30 seconds
+- Changes sync every 15 seconds
 - ⚠️ **Testing environment** - NOT for production
 
 ---
@@ -52,13 +52,13 @@ INSTALL_NODE=false
 INSTALL_PYTHON=true
 INSTALL_GOLANG=false
 DEV_START_COMMAND=bash dev_startup.sh
-GITHUB_SYNC_INTERVAL=30
+GITHUB_SYNC_INTERVAL=15
 ENABLE_DEV_HEALTH=false
 ```
 
 **What you get**:
 - Hot-reload development environment with uvicorn --reload
-- Changes sync every 30 seconds
+- Changes sync every 15 seconds
 - ⚠️ **Testing environment** - NOT for production
 
 ---
@@ -73,13 +73,13 @@ INSTALL_NODE=true
 INSTALL_PYTHON=false
 INSTALL_GOLANG=false
 DEV_START_COMMAND=bash dev_startup.sh
-GITHUB_SYNC_INTERVAL=30
+GITHUB_SYNC_INTERVAL=15
 ENABLE_DEV_HEALTH=false
 ```
 
 **What you get**:
 - Hot-reload development environment with Next.js dev server
-- Changes sync every 30 seconds
+- Changes sync every 15 seconds
 - ⚠️ **Testing environment** - NOT for production
 
 ---
@@ -97,7 +97,7 @@ INSTALL_RUBY=true
 RUBY_VERSIONS="3.4.7"
 DEFAULT_RUBY="3.4.7"
 DEV_START_COMMAND=bash dev_startup.sh
-GITHUB_SYNC_INTERVAL=30
+GITHUB_SYNC_INTERVAL=15
 ENABLE_DEV_HEALTH=false
 ```
 
@@ -118,7 +118,7 @@ INSTALL_NODE=true
 INSTALL_PYTHON=false
 INSTALL_GOLANG=false
 DEV_START_COMMAND=bash dev_startup.sh
-GITHUB_SYNC_INTERVAL=30
+GITHUB_SYNC_INTERVAL=15
 ENABLE_DEV_HEALTH=false
 PRE_DEPLOY_FOLDER=scripts/pre-deploy
 PRE_DEPLOY_COMMAND=bash migrate.sh

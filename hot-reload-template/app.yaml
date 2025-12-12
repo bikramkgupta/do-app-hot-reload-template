@@ -80,7 +80,7 @@ services:
         value: "/workspaces/app"
         scope: RUN_TIME
       - key: GITHUB_SYNC_INTERVAL
-        value: "30"
+        value: "15"
         scope: RUN_TIME
       - key: ENABLE_DEV_HEALTH
         value: "false"

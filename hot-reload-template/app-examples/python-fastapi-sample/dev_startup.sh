@@ -112,7 +112,7 @@ hash_files | sha256sum | awk '{print $1}' > "$HASH_FILE"
 # Background watcher function that monitors dependency files
 watch_dependencies() {
   while true; do
-    sleep 10  # Check every 10 seconds
+    sleep 5  # Check every 5 seconds
     current=$(hash_files | sha256sum | awk '{print $1}')
     previous=$(cat "$HASH_FILE" 2>/dev/null || true)
     if [ "$current" != "$previous" ]; then
@@ -157,6 +157,5 @@ while true; do
   # Wait for uvicorn to exit (either from crash or watcher kill)
   wait "$UVICORN_PID" 2>/dev/null || true
 
-  echo "Uvicorn exited. Restarting in 2 seconds..."
-  sleep 2
+  echo "Uvicorn exited. Restarting..."
 done

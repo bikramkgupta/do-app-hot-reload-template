@@ -453,7 +453,7 @@ const welcomePageHTML = `<!DOCTYPE html>
 
             <div class="warning">
                 <strong>🔄 Hot Reload is Automatic</strong>
-                <p>Your repository syncs every {{.SyncInterval}} seconds (configurable via GITHUB_SYNC_INTERVAL environment variable, default is 30s). Use a dev server with hot reload (like <code>npm run dev</code>, <code>uvicorn --reload</code>, or <code>air</code>) to see changes without restarting.</p>
+                <p>Your repository syncs every {{.SyncInterval}} seconds (configurable via GITHUB_SYNC_INTERVAL environment variable, default is 15s). Use a dev server with hot reload (like <code>npm run dev</code>, <code>uvicorn --reload</code>, or <code>air</code>) to see changes without restarting.</p>
             </div>
 
             <div class="warning">

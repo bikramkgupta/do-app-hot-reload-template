@@ -52,7 +52,7 @@ ARG MONGOSH_VERSION=8.0
 # GitHub repo sync configuration
 ARG GITHUB_REPO_URL=""
 ARG WORKSPACE_PATH=/workspaces/app
-ARG GITHUB_SYNC_INTERVAL=30
+ARG GITHUB_SYNC_INTERVAL=15
 
 # =============================================================================
 # Install base system dependencies
