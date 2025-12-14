@@ -62,10 +62,10 @@ jobs:
             echo "Merge successful"
           else
             echo "Merge had conflicts, resolving..."
-            # For hot-reload-template config files, take main's version
-            git checkout --theirs hot-reload-template/.do/deploy.template.yaml 2>/dev/null || true
-            git checkout --theirs hot-reload-template/app.yaml 2>/dev/null || true
-            git checkout --theirs hot-reload-template/scripts/github-sync.sh 2>/dev/null || true
+            # For config files, take main's version
+            git checkout --theirs .do/deploy.template.yaml 2>/dev/null || true
+            git checkout --theirs app.yaml 2>/dev/null || true
+            git checkout --theirs scripts/github-sync.sh 2>/dev/null || true
             git add -A
           fi
 
@@ -90,8 +90,8 @@ jobs:
           echo "=== Verification for $BRANCH ==="
 
           # Check Dockerfile matches main
-          MAIN_HASH=$(git show origin/main:hot-reload-template/Dockerfile | md5sum | cut -d' ' -f1)
-          BRANCH_HASH=$(git show origin/$BRANCH:hot-reload-template/Dockerfile | md5sum | cut -d' ' -f1)
+          MAIN_HASH=$(git show origin/main:Dockerfile | md5sum | cut -d' ' -f1)
+          BRANCH_HASH=$(git show origin/$BRANCH:Dockerfile | md5sum | cut -d' ' -f1)
 
           if [ "$MAIN_HASH" = "$BRANCH_HASH" ]; then
             echo "✓ Dockerfile matches main"

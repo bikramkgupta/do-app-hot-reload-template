@@ -1,8 +1,10 @@
-# do-app-platform-ai-dev-workflow
+# DigitalOcean App Platform Dev Template
 
-**An opinionated workflow for AI-assisted development on DigitalOcean App Platform. Test locally → Deploy to testing (hot-reload) → Deploy to production (optimized).**
+> **Experimental**: This is a personal project and is not officially supported by DigitalOcean. APIs may change without notice.
 
-Designed for AI assistants like Claude Code, Cursor, Codex, VS Code Copilot and Antigravity to provide a hands-free experience for rapid iteration at scale.
+> **📖 Documentation for AI Agents:** See [CLAUDE.md](CLAUDE.md) - Comprehensive reference for automated deployments
+
+**Deploy once, iterate fast.** This template continuously syncs your GitHub repo and runs your dev server—no rebuild loop.
 
 ## 🚀 Quick Deploy - Choose Your Sample App
 
@@ -68,302 +70,268 @@ Deploy your own application - just point to your GitHub repo.
 
 **After deployment:** Update environment variables in App Platform UI to point to your repository.
 
+> **Important:** When configuring your app, you'll need to update health check settings. See [CUSTOMIZATION.md](CUSTOMIZATION.md#health-check-configuration) for details on `internal_ports` configuration.
+
 ---
 
-## 🎯 What Is This?
-
-This repository provides a complete, end-to-end development workflow that enables:
-
-1. **Local Development** - Fast iteration in a devcontainer with framework dev tools
-2. **Local Build Verification** - Test production compatibility before pushing
-3. **Rapid Testing on App Platform** - Hot-reload environment with 15-30s sync cycles
-4. **Production Deployment** - Optimized builds with full confidence
-
-**The Problem It Solves:**
-- Traditional workflow: Code → Push → Build (5-10 min) → Deploy → Test → Fix → Repeat
-- This workflow: Local dev → Verify build → Push → Hot-reload testing (15-30s) → Production
-
-## 🔄 Complete Workflow
+## How It Works
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0069ff', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f4faff'}}}%%
 graph TD
-    subgraph Local["💻 Local Machine (Dev Container)"]
-        DevCode["Developing Code\n(VS Code/Cursor + AI)"]
-        
-        subgraph Phase1["Phase 1: Local Iteration"]
-            DevServer[/"Framework Dev Server\n(e.g., npm run dev, Air)"/]
-        end
-        
-        subgraph Phase2["Phase 2: Build Verification"]
-            DoctlBuild[/"doctl app dev build\n(DO Buildpack Container)"/]
-            BuildCheck{"Build\nSuccess?"}
-        end
+    subgraph Template["Hot Reload Template"]
+        Config["Configure Runtimes<br/>Node.js / Python / Go / Ruby"]
+        Sync["GitHub Sync Daemon<br/>Pulls every 15s"]
+        Startup["dev_startup.sh<br/>Your startup script"]
+        PreHook["Pre-Deploy Hook<br/>scripts/pre-deploy"]
+        PostHook["Post-Deploy Hook<br/>scripts/post-deploy"]
     end
-
-    subgraph Remote["☁️ Remote & Cloud"]
-        GH[("GitHub Repository\n(Feature/Main Branch)")]
-        
-        subgraph DO["DigitalOcean App Platform"]
-            subgraph Phase3["Phase 3: Testing (Hot Reload)"]
-                SyncDaemon("GitHub Sync Daemon\n(Pulls every 15-30s)")
-                TestApp["Testing App Instance\n(Running Dev Server)"]
-                ManagedServices[("DO Managed Services\n(Databases, Spaces)")]
-            end
-            
-            subgraph Phase4["Phase 4: Production"]
-                ProdBuild("Production Build\n(Buildpack or Dockerfile)")
-                ProdApp["🚀 Production App\n(Optimized Release)"]
-            end
-        end
+    
+    subgraph YourApp["Your Application"]
+        Repo["GitHub Repository<br/>Your code"]
+        DevServer["Dev Server<br/>Hot reload enabled"]
     end
-
-    %% Main Workflow Connections
-    DevCode -->|"1. Hot Reload Loop"| DevServer
-    DevServer -.-> DevCode
     
-    DevCode ==>|"2. Verify Compatibility"| DoctlBuild
-    DoctlBuild --> BuildCheck
+    Config --> Sync
+    Sync --> Repo
+    Repo --> Startup
+    Startup --> DevServer
+    Repo --> PreHook
+    PreHook --> DevServer
+    DevServer --> PostHook
     
-    BuildCheck -- "No (Fix Issue)" --> DevCode
-    BuildCheck ==>|"Yes (3. git push)"| GH
-
-    GH -.->|"4. Auto-Sync (15-30s)"| SyncDaemon
-    SyncDaemon -->|"Hot Update"| TestApp
-    TestApp <-->|"Test with Real Data"| ManagedServices
-
-    GH ==>|"5. Deploy Stable Branch"| ProdBuild
-    ProdBuild ==> ProdApp
-
-    %% Styling
-    classDef local fill:#f9f9f9,stroke:#333,stroke-width:2px;
-    classDef cloud fill:#e6f2ff,stroke:#0069ff,stroke-width:2px;
-    classDef gh fill:#f0f0f0,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5;
-    classDef process fill:#fff,stroke:#0069ff,stroke-width:1px;
-    classDef decision fill:#fffac0,stroke:#e6b800,stroke-width:2px;
-
-    class Local local;
-    class DO cloud;
-    class GH gh;
-    class DoctlBuild,TestApp,ProdApp,ProdBuild process;
-    class BuildCheck decision;
-
-    linkStyle 2,4,8,9,10 stroke:#0069ff,stroke-width:3px;
-    linkStyle 0,1,6,7 stroke:#666,stroke-width:2px,stroke-dasharray: 5 5;
+    style Template fill:#e6f2ff,stroke:#0069ff
+    style YourApp fill:#f9f9f9,stroke:#333
 ```
 
-## 📁 Repository Structure
+**The Flow:**
+1. **Template** - Deploy this template to App Platform
+2. **Configure** - Choose runtimes (Node.js, Python, Go, Ruby) via build args
+3. **Point to Your Code** - Set `GITHUB_REPO_URL` and `GITHUB_REPO_FOLDER` (or use default Next.js sample)
+4. **Startup Script** - Template runs `dev_startup.sh` from your repo (handles deps, hot reload)
+5. **Hooks** - Optional `scripts/pre-deploy` and `scripts/post-deploy` run on code changes
+6. **Sync** - Changes sync every 15s, dev server auto-restarts
 
-```
-do-app-platform-ai-dev-workflow/
-├── .devcontainer/          # Local development container setup
-├── hot-reload-template/        # Hot-reload template for App Platform
-│   ├── examples/          # Reusable dev_startup.sh scripts
-│   └── app-examples/      # Complete working sample apps
-├── build-locally.sh       # Helper: Local build verification
-├── workflow-check.sh      # Helper: Context validation
-├── README.md              # This file
-└── agent.md               # AI assistant guide
-```
+## 2-Minute Quickstart
 
-## 🚀 Quick Start
+**Click "Deploy to DO" → Done!** The template deploys with a working Next.js sample app.
 
-### Full Workflow (Recommended)
+1. **Deploy** - Click the "Deploy to DO" button above
+2. **Wait** - Container builds (~2-3 min), then Next.js app starts automatically
+3. **Visit** - Open your app URL, see the sample app running
+4. **Inspect** - Check App Platform UI → Settings → Environment Variables to see:
+   - `GITHUB_REPO_URL` → Points to this monorepo
+   - `GITHUB_REPO_FOLDER` → `app-examples/nextjs-sample-app`
+   - `DEV_START_COMMAND` → `bash dev_startup.sh`
+   - Pre/post deploy hooks configured
 
-1. **Clone this repository**
-   ```bash
-   git clone https://github.com/your-org/do-app-platform-ai-dev-workflow.git
-   cd do-app-platform-ai-dev-workflow
-   ```
+**That's it!** You now have a working hot-reload environment. Make changes to the Next.js sample, push to GitHub, and see them appear in ~15 seconds.
 
-2. **Open in VSCode/Cursor/AntiGravity** - The `.devcontainer/` will set up your environment
+### Use Your Own App
 
-3. **Start developing** - Use framework dev tools (npm run dev, uvicorn, etc.)
+To point the template at your own repository:
 
-4. **Verify production build** - Run `./build-locally.sh` before pushing
+1. **App Platform UI** → Settings → Environment Variables
+2. Update:
+   - `GITHUB_REPO_URL` → Your repo URL
+   - `GITHUB_REPO_FOLDER` → Leave empty (or subfolder for monorepos)
+   - `DEV_START_COMMAND` → `bash dev_startup.sh` (or your command)
+3. **Build Arguments** → Enable only runtimes you need:
+   - Node.js? `INSTALL_NODE=true`, others=false
+   - Python? `INSTALL_PYTHON=true`, others=false
+   - Go? `INSTALL_GOLANG=true`, others=false
+4. **Redeploy** → Your app syncs and runs
 
-5. **Set up hot-reload testing** - Deploy `hot-reload-template/` to App Platform
+## Configuration
 
-6. **Deploy to production** - Use optimized buildpack or your Dockerfile
+### Runtime Environment Variables
 
-### Modular Usage
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GITHUB_REPO_URL` | Yes* | Next.js sample | Your application repository URL |
+| `GITHUB_REPO_FOLDER` | No | `app-examples/nextjs-sample-app` | Subfolder within repo (for monorepos) |
+| `GITHUB_BRANCH` | No | `main` | Branch to sync |
+| `GITHUB_TOKEN` | No | - | GitHub token for private repos (stored as secret) |
+| `DEV_START_COMMAND` | No | `bash dev_startup.sh` | Command to start your dev server |
+| `WORKSPACE_PATH` | No | `/workspaces/app` | Where to sync your repo |
+| `GITHUB_SYNC_INTERVAL` | No | `15` | How often to sync repo (seconds) |
+| `ENABLE_DEV_HEALTH` | No | `false` | Bootstrap health server; set `true` if your app doesn't have health endpoint |
 
-**Just want local dev?**
-- Copy `.devcontainer/` to your project
-- You get: doctl, Docker, database clients, all runtimes
+\* Defaults to Next.js sample app for instant demo.
 
-**Just want hot-reload on App Platform?**
-- Use `hot-reload-template/` independently
-- Deploy it, point it to your repo, get 15-30s sync cycles
+### Build Arguments
 
-**Starting a new app?**
-- Copy from `hot-reload-template/app-examples/` (Go, Python, Next.js, Rails)
-- You get: working `dev_startup.sh`, `appspec.yaml` for testing
+Choose runtimes you need (smaller selection = faster builds):
 
-**Full workflow?**
-- Use everything together for maximum productivity
+| Build Arg | Default | When to Enable |
+|-----------|---------|----------------|
+| `INSTALL_NODE` | `true` | Node.js, Next.js, Remix, Express apps |
+| `INSTALL_PYTHON` | `false` | Python, FastAPI, Django, Flask apps |
+| `INSTALL_GOLANG` | `false` | Go apps |
+| `INSTALL_RUST` | `false` | Rust apps |
+| `INSTALL_RUBY` | `false` | Ruby, Rails, Sinatra apps |
+| `INSTALL_POSTGRES` | `true` | PostgreSQL client tools (psql, libpq) |
+| `INSTALL_MONGODB` | `false` | MongoDB client tools (mongosh) |
+| `INSTALL_MYSQL` | `false` | MySQL client tools (mysql cli) |
 
-## 📖 Detailed Workflow
+## Write Your dev_startup.sh
 
-### Phase 1: Local Development
+**Recommended:** Copy a proven example from `examples/` directory. These handle:
+- Automatic lock file conflict resolution (`package-lock.json`, `go.sum`, `uv.lock`)
+- Hard rebuild on dependency errors
+- Hot reload with file watching
 
-Work in the devcontainer using your framework's native tools:
-- **Next.js:** `npm run dev`
-- **FastAPI:** `uvicorn main:app --reload`
-- **Go:** `air` (live reload)
-- **Express:** `nodemon server.js`
+**Available examples:**
+- `examples/dev_startup.sh.nextjs` - Next.js with nodemon, handles npm peer deps
+- `examples/dev_startup.sh.python` - FastAPI with uv, handles lock conflicts
+- `examples/dev_startup.sh.golang` - Go with file watching, handles go.sum conflicts
 
-**Why:** Fastest iteration, immediate feedback, AI assistants can help in real-time.
+**Quick start:**
+1. Copy the appropriate example to your repo as `dev_startup.sh`
+2. Customize if needed (port, command, etc.)
+3. Script handles errors, conflicts, and hot reload automatically
 
-### Phase 2: Local Build Verification
-
-Before pushing, verify your build will work in production:
-
+**Simple example (Next.js):**
 ```bash
-# Using helper script
-./build-locally.sh
-
-# Or directly
-doctl app dev build
+#!/bin/bash
+cd /workspaces/app
+npm install
+npm run dev -- --hostname 0.0.0.0 --port 8080
 ```
 
-**Why:** Catches build issues early (before the 5-10 minute deploy cycle). Uses the same buildpack containers as App Platform production.
+Your script should:
+- Install dependencies
+- Start a dev server on port `8080`
+- Support hot reload for fast iteration
 
-### Phase 3: Hot-Reload Testing on App Platform
+## Pre-Deploy and Post-Deploy Hooks
 
-Deploy the `hot-reload-template/` to create a testing environment:
+Execute scripts at deployment lifecycle points. Jobs run **only when git commit changes** (not every 30s sync).
 
-1. **Deploy the template:**
-   ```bash
-   cd hot-reload-template
-   doctl apps create --spec app.yaml
-   ```
+### PRE_DEPLOY (Strict Mode)
 
-2. **Configure environment variables:**
-   - `GITHUB_REPO_URL` - Your app repository
-   - `GITHUB_SYNC_INTERVAL` - "15" or "30" seconds
-   - `DEV_START_COMMAND` - "bash dev_startup.sh" (or leave blank if script exists in repo)
+Runs **before** app starts. Must succeed or container exits.
 
-3. **Push to GitHub** - Changes appear in testing within 15-30 seconds
+**Use for:** Database migrations, schema updates, environment validation
 
-**Why:** Test with real App Platform services (databases, Spaces) without full rebuilds. Rapid feedback loop.
+**Configuration:**
+```yaml
+envs:
+  - key: PRE_DEPLOY_FOLDER
+    value: scripts/pre-deploy
+  - key: PRE_DEPLOY_COMMAND
+    value: bash migrate.sh
+  - key: PRE_DEPLOY_TIMEOUT
+    value: "300"  # seconds
+```
 
-**Important:** The `hot-reload-template/Dockerfile` is **only for testing**. Production uses buildpack or your own Dockerfile.
+### POST_DEPLOY (Lenient Mode)
 
-### Phase 4: Production Deployment
+Runs **after** app starts (background). Failure logged but app continues.
 
-Once testing passes, deploy to production:
+**Use for:** Data seeding, cache warming, notifications
 
-**Option A: Buildpack (Recommended)**
-- App Platform automatically detects your framework
-- No Dockerfile needed
-- Optimized builds
+**Configuration:**
+```yaml
+envs:
+  - key: POST_DEPLOY_FOLDER
+    value: scripts/post-deploy
+  - key: POST_DEPLOY_COMMAND
+    value: bash seed.sh
+  - key: POST_DEPLOY_TIMEOUT
+    value: "300"  # seconds
+```
 
-**Option B: Your Own Dockerfile**
-- If you have custom build requirements
-- Keep your existing Dockerfile
-- **You don't need to replace it** - the `hot-reload-template/Dockerfile` is only for testing
+**When Jobs Execute:**
+- **Initial startup**: Always runs before/after app starts
+- **Continuous sync (every 15s)**: Commit changed → Execute jobs, Commit unchanged → Skip jobs
 
-**Key Point:** Create separate `appspec.yaml` files:
-- **Testing:** Uses `hot-reload-template/Dockerfile` for hot-reload
-- **Production:** Uses buildpack or your Dockerfile for optimized builds
+See working examples in `app-examples/nextjs-sample-app/scripts/` with detailed READMEs.
 
-## 🛠️ Components
+## Monorepo Support
 
-### `.devcontainer/`
-Local development environment with:
-- doctl (DigitalOcean CLI)
-- Docker
-- All runtimes (Node.js, Python, Go, Rust)
-- Database clients (PostgreSQL, MongoDB, MySQL)
-- Pre-configured for App Platform development
+Deploy applications from monorepos by syncing specific subfolders.
 
-### `hot-reload-template/`
-Hot-reload template for App Platform testing:
-- **Dockerfile** - Dev container with GitHub sync
-- **scripts/** - Sync daemon, health server, startup orchestration
-- **examples/** - Reusable `dev_startup.sh` scripts with error handling
-- **app-examples/** - Complete working sample apps
+**Configuration:**
+```yaml
+envs:
+  - key: GITHUB_REPO_URL
+    value: https://github.com/myorg/monorepo
+  - key: GITHUB_REPO_FOLDER
+    value: apps/backend
+  - key: GITHUB_BRANCH
+    value: feature/new-api
+```
 
-**Note:** The Dockerfile is for **testing only**. Production uses buildpack or your Dockerfile.
+**How it works:**
+1. Sync script clones full monorepo to `/tmp/monorepo-cache/`
+2. Only specified folder synced to `/workspaces/app`
+3. Your `dev_startup.sh` runs from within that folder
+4. Changes sync every 15 seconds by default
 
-### Helper Scripts
+## Working Examples
 
-**`build-locally.sh`** - Wraps `doctl app dev build` with helpful defaults
+Complete working sample applications in [`app-examples/`](app-examples/):
+
+- **`app-examples/go-sample-app/`** - Go application with hot-reload
+- **`app-examples/python-fastapi-sample/`** - Python FastAPI application with hot-reload
+- **`app-examples/nextjs-sample-app/`** - Next.js application with hot-reload (default)
+- **`app-examples/ruby-rails-sample/`** - Rails application with hot-reload
+
+Each example includes:
+- Complete `dev_startup.sh` script
+- `appspec.yaml` configured for **testing/hot-reload** environment
+- Working application code
+- Pre/post deploy hook examples
+
+**Important:** The `appspec.yaml` in these examples is for **testing/hot-reload**. For **production**, create a separate `appspec.yaml` that uses buildpack or your own Dockerfile (not the hot-reload `Dockerfile` from this template).
+
+## Key Behaviors
+
+- **Git sync is continuous** - Your app is NOT auto-restarted. Use a dev server with hot reload (see examples above).
+- **Health server is temporary** - Disable via `ENABLE_DEV_HEALTH=false` once your app handles health checks.
+- **Runtimes are modular** - Enable only what you need for faster builds and smaller images.
+- **Environment variables are runtime** - Changes to env vars take effect on redeploy (no rebuild needed).
+- **Build arguments are build-time** - Changes to build args require a full rebuild.
+- **Lock file conflicts auto-resolved** - The sync script and example dev_startup.sh scripts automatically detect and resolve merge conflicts in lock files.
+- **Hard rebuild on errors** - Example scripts automatically perform clean rebuilds when dependency installation fails.
+
+## Deploy Options
+
+**One-click (recommended):**
+Use the "Deploy to DO" button and configure via UI after first deploy
+
+**App Platform UI:**
+Create App → GitHub → select this repo → configure env vars/build args → deploy
+
+**CLI (advanced):**
+Edit `app.yaml` with your values, then: `doctl apps create --spec app.yaml`
+
+**Local smoke test:**
 ```bash
-./build-locally.sh                    # Build using default spec
-./build-locally.sh my-component       # Build specific component
-./build-locally.sh --spec app.yaml    # Use custom spec
+docker build -t dev-env .
+docker run -p 8080:8080 \
+  -e GITHUB_REPO_URL=https://github.com/user/your-repo.git \
+  -e DEV_START_COMMAND="bash dev_startup.sh" \
+  dev-env
 ```
 
-**`workflow-check.sh`** - Validates folder context and workflow state
-```bash
-./workflow-check.sh                   # Check current context
-./workflow-check.sh --verbose         # Detailed information
-```
+## Troubleshooting
 
-## 🎓 Why This Workflow?
+- **Nothing starts:** Confirm `GITHUB_REPO_URL` is set and accessible, `dev_startup.sh` exists in your repo
+- **Health check fails:** Either keep `ENABLE_DEV_HEALTH=true` OR point health checks to your app and set `ENABLE_DEV_HEALTH=false`
+- **Health check port validation error:** If you see "health check port not found in internal_ports", either add the port to `internal_ports` or remove `internal_ports` and use `http_port` for health checks. See [CUSTOMIZATION.md](CUSTOMIZATION.md#health-check-configuration).
+- **Changes not visible:** Ensure your dev server supports hot reload (npm run dev, uvicorn --reload, air), or manually restart container
+- **Build takes too long:** Disable unused runtimes in build arguments
+- **npm peer dependency errors:** Use the Next.js example script which automatically creates `.npmrc` with `legacy-peer-deps=true`
+- **Lock file merge conflicts:** The sync script and example dev_startup.sh scripts automatically resolve these. If issues persist, manually delete the lock file and let it regenerate.
+- **Dependency installation fails:** Example scripts automatically perform hard rebuilds (clean reinstall) when errors are detected. Check logs for details.
 
-### Traditional Workflow Problems
-- 5-10 minute deploy cycles
-- Build failures discovered late
-- Slow feedback loops
-- Integration issues found only in production
+## Advanced Customization
 
-### This Workflow Benefits
-- ✅ Build compatibility verified before pushing (saves 5-10 min cycles)
-- ✅ Rapid iteration in testing (15-30s feedback)
-- ✅ Real service testing before production
-- ✅ Hands-free experience for AI assistants
-- ✅ Catch build issues early, not in production
+For deeper tweaks (new runtimes, custom health/sync logic): see [`CUSTOMIZATION.md`](CUSTOMIZATION.md)
 
-## 📚 Documentation
-
-- **[agent.md](agent.md)** - Comprehensive guide for AI assistants
-- **[hot-reload-template/README.md](hot-reload-template/README.md)** - Hot-reload template setup
-- **[hot-reload-template/app-examples/](hot-reload-template/app-examples/)** - Working sample apps
-
-## 🔑 Key Concepts
-
-### Testing vs Production
-
-**Testing Environment (Hot-Reload):**
-- Uses `hot-reload-template/Dockerfile`
-- GitHub sync every 15-30 seconds
-- Dev server with hot-reload
-- Fast iteration, not optimized
-
-**Production Environment:**
-- Uses buildpack **OR** your own Dockerfile
-- Optimized builds
-- No hot-reload (not needed)
-- Separate `appspec.yaml` configuration
-
-### Dockerfile Usage
-
-**If you have your own Dockerfile:**
-- ✅ Keep it for production
-- ✅ Use `dev_startup.sh` from `hot-reload-template/examples/` (for testing)
-- ✅ Create separate `appspec.yaml` files for testing and production
-- ❌ Don't replace your Dockerfile with `hot-reload-template/Dockerfile`
-
-**If you don't have a Dockerfile:**
-- ✅ Use buildpack for production (automatic)
-- ✅ Use `hot-reload-template/Dockerfile` for testing (hot-reload)
-
-## 🤝 Contributing
-
-This is an opinionated workflow. If you want to:
-- **Extend the template:** See `hot-reload-template/CUSTOMIZATION.md`
-- **Add examples:** Add to `hot-reload-template/app-examples/`
-- **Improve workflow:** Update `agent.md` and this README
-
-## 📖 Additional Resources
-
-- [DigitalOcean App Platform Docs](https://docs.digitalocean.com/products/app-platform/)
-- [Build Locally Guide](https://docs.digitalocean.com/products/app-platform/how-to/build-locally/)
-- [App Spec Reference](https://docs.digitalocean.com/products/app-platform/reference/app-spec/)
+For automation guidance: see [`AGENT.md`](agent.md)
 
 ---
 
-**For AI Assistants:** See [agent.md](agent.md) for complete workflow guidance, decision trees, and automation instructions.
+**Docs map:** `README.md` = use the template, `CUSTOMIZATION.md` = change the template, `AGENT.md` = checklist for automating it.
