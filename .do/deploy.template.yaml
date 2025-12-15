@@ -1,128 +1,121 @@
 spec:
   #
-  # DigitalOcean App Platform Specification
-  # Simplified Development Environment with GitHub Sync
+  # DigitalOcean App Platform - Hot Reload Dev Environment
   #
-  # This spec deploys a dev environment that automatically syncs a GitHub
-  # repository and runs your application for fast iteration cycles.
+  # Pre-built image approach = Deploy in ~1 minute!
+  # No build phase - just pull the image and start.
+  #
+  # After deployment, configure from the DO Console:
+  #   - Set GITHUB_REPO_URL to your repository
+  #   - Set GITHUB_TOKEN if private repo (mark as secret)
+  #   - Set DEV_START_COMMAND or add dev_startup.sh to your repo
+  #
+  # Available images (change repository below to match your runtime):
+  #   - bikramkgupta/hot-reload-node       (Node.js 22/24)
+  #   - bikramkgupta/hot-reload-python     (Python 3.12/3.13)
+  #   - bikramkgupta/hot-reload-go         (Go 1.23)
+  #   - bikramkgupta/hot-reload-node-python (Node.js + Python)
+  #   - bikramkgupta/hot-reload-full       (Node.js + Python + Go)
   #
 
-  name: dev-environment
+  name: hot-reload-dev
   region: syd1
 
   services:
     - name: dev-workspace
-      # Use Dockerfile from repository
-      dockerfile_path: Dockerfile
+      # Pre-built image from GitHub Container Registry
+      # Change the repository to match your runtime needs
+      image:
+        registry_type: GHCR
+        repository: bikramkgupta/hot-reload-node
+        tag: latest
 
-      # GitHub repository (this repository will be used for the dev environment itself)
-      github:
-        repo: bikram20/do-app-platform-ai-dev-workflow
-        branch: main
-        deploy_on_push: true
-
-      # Service type - worker with HTTP health check
       instance_count: 1
       instance_size_slug: apps-s-1vcpu-1gb
 
-      # Internal port for health check
-      internal_ports:
-      - 9090
-
-      # HTTP port for your application traffic (health check uses dedicated port below)
+      # Application port
       http_port: 8080
 
-      # Health check configuration
-      # Uses /dev_health endpoint which is always available (even without user app)
+      # Health check on port 8080
+      # Welcome-page-server responds to /health until your app starts
       health_check:
-        http_path: /dev_health
-        initial_delay_seconds: 30
+        http_path: /health
+        initial_delay_seconds: 10
         period_seconds: 10
         timeout_seconds: 5
         success_threshold: 1
-        failure_threshold: 5
-        port: 9090
+        failure_threshold: 3
+        port: 8080
 
-      # Environment variables
       envs:
-        # === Build Arguments ===
-        # Runtime and database client installation (BUILD_TIME scope)
-        # Enable only the runtimes you need for faster builds
-        - key: INSTALL_NODE
-          value: "true"  # Node.js/Next.js/Remix apps (optional - health server uses Go binary)
-          scope: BUILD_TIME
-        - key: INSTALL_PYTHON
-          value: "true"  # Python/FastAPI/Django apps
-          scope: BUILD_TIME
-        - key: INSTALL_GOLANG
-          value: "true"  # Go apps
-          scope: BUILD_TIME
-        - key: INSTALL_RUST
-          value: "false"  # Rust apps
-          scope: BUILD_TIME
-        - key: INSTALL_POSTGRES
-          value: "true"
-          scope: BUILD_TIME
-        - key: INSTALL_MONGODB
-          value: "false"
-          scope: BUILD_TIME
-        - key: INSTALL_MYSQL
-          value: "false"
-          scope: BUILD_TIME
-
-        # === GitHub Repository to Clone ===
-        # Set this to the repository you want to work on
+        # === Your Application Repository ===
+        # Set this to your GitHub repository URL after deployment
         - key: GITHUB_REPO_URL
           value: ""
           scope: RUN_TIME
 
-        # === GitHub Authentication ===
-        # Required for private repositories
+        # For private repos: set your GitHub Personal Access Token
         - key: GITHUB_TOKEN
           value: ""
           scope: RUN_TIME
           type: SECRET
 
-        # === Workspace Configuration ===
-        - key: WORKSPACE_PATH
-          value: "/workspaces/app"
-          scope: RUN_TIME
-
-        - key: GITHUB_SYNC_INTERVAL
-          value: "15"
-          scope: RUN_TIME
-
-        # === Dev Health Server ===
-        # Built-in Go binary serving /dev_health on port 9090 for bootstrap health checks
-        # Set to "false" when your app provides its own health endpoint
-        - key: ENABLE_DEV_HEALTH
-          value: "true"
-          scope: RUN_TIME
-
-        # === Application Startup ===
-        # Command to run your application (if startup.sh not found in repo)
-        # Examples:
-        #   - "npm start"
-        #   - "python app.py"
-        #   - "go run main.go"
-        #   - "uvicorn app:app --host 0.0.0.0 --port 8080"
-        - key: RUN_COMMAND
-          value: ""
-          scope: RUN_TIME
-
-        # === Monorepo Support ===
-        # Specify subfolder within the repo to sync (for monorepos)
-        - key: GITHUB_REPO_FOLDER
-          value: ""
-          scope: RUN_TIME
-
-        # === Branch Selection ===
-        # Specify which branch to sync (useful for feature/staging branches)
+        # Branch to sync (leave empty for main/master)
         - key: GITHUB_BRANCH
           value: ""
           scope: RUN_TIME
 
-  # Optional: Add alerts
+        # For monorepos: specify subfolder (e.g., "apps/frontend")
+        - key: GITHUB_REPO_FOLDER
+          value: ""
+          scope: RUN_TIME
+
+        # === Application Startup ===
+        # Command to start your app
+        # Leave empty if you have dev_startup.sh in your repo root
+        # Examples:
+        #   - "npm run dev -- --host 0.0.0.0 --port 8080"
+        #   - "uvicorn main:app --host 0.0.0.0 --port 8080 --reload"
+        #   - "bash dev_startup.sh"
+        - key: DEV_START_COMMAND
+          value: ""
+          scope: RUN_TIME
+
+        # === Sync Settings ===
+        # How often to sync from GitHub (seconds)
+        - key: GITHUB_SYNC_INTERVAL
+          value: "15"
+          scope: RUN_TIME
+
+        - key: WORKSPACE_PATH
+          value: "/workspaces/app"
+          scope: RUN_TIME
+
+        # === Deploy Jobs (Optional) ===
+        # Scripts that run when code changes are detected
+
+        # Pre-deploy: runs before app starts (e.g., database migrations)
+        - key: PRE_DEPLOY_FOLDER
+          value: "scripts/pre-deploy"
+          scope: RUN_TIME
+        - key: PRE_DEPLOY_COMMAND
+          value: ""
+          scope: RUN_TIME
+        - key: PRE_DEPLOY_TIMEOUT
+          value: "300"
+          scope: RUN_TIME
+
+        # Post-deploy: runs after app starts (e.g., data seeding)
+        - key: POST_DEPLOY_FOLDER
+          value: "scripts/post-deploy"
+          scope: RUN_TIME
+        - key: POST_DEPLOY_COMMAND
+          value: ""
+          scope: RUN_TIME
+        - key: POST_DEPLOY_TIMEOUT
+          value: "300"
+          scope: RUN_TIME
+
   alerts:
     - rule: DEPLOYMENT_FAILED
     - rule: DOMAIN_FAILED

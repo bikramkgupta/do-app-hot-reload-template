@@ -1,23 +1,14 @@
 #
 # DigitalOcean App Platform - Hot Reload Dev Environment
-#
-# Pre-built image approach = Deploy in ~1 minute!
-# No build phase - just pull the image and start.
+# Pre-built Python Image (Deploys in ~1 minute!)
 #
 # Usage:
-#   doctl apps create --spec app.yaml
+#   doctl apps create --spec app-specs/app-python.yaml
 #
-# After deployment, configure from the DO Console:
+# After deployment, configure your app in the DO Console:
 #   - Set GITHUB_REPO_URL to your repository
-#   - Set GITHUB_TOKEN if private repo (mark as secret)
+#   - Set GITHUB_TOKEN if private repo (as secret)
 #   - Set DEV_START_COMMAND or add dev_startup.sh to your repo
-#
-# Available images (change repository below to match your runtime):
-#   - bikramkgupta/hot-reload-node       (Node.js 22/24)
-#   - bikramkgupta/hot-reload-python     (Python 3.12/3.13)
-#   - bikramkgupta/hot-reload-go         (Go 1.23)
-#   - bikramkgupta/hot-reload-node-python (Node.js + Python)
-#   - bikramkgupta/hot-reload-full       (Node.js + Python + Go)
 #
 
 name: hot-reload-dev
@@ -26,10 +17,10 @@ region: syd1
 services:
   - name: dev-workspace
     # Pre-built image from GitHub Container Registry
-    # Change the repository to match your runtime needs
+    # No build phase = deploy in ~1 minute!
     image:
       registry_type: GHCR
-      repository: bikramkgupta/hot-reload-node
+      repository: bikramkgupta/hot-reload-python
       tag: latest
 
     instance_count: 1
@@ -38,8 +29,7 @@ services:
     # Application port
     http_port: 8080
 
-    # Health check on port 8080
-    # Welcome-page-server responds to /health until your app starts
+    # Health check on port 8080 (welcome-page-server responds until your app starts)
     health_check:
       http_path: /health
       initial_delay_seconds: 10
@@ -51,40 +41,33 @@ services:
 
     envs:
       # === Your Application Repository ===
-      # Set this to your GitHub repository URL after deployment
       - key: GITHUB_REPO_URL
         value: ""
         scope: RUN_TIME
 
-      # For private repos: set your GitHub Personal Access Token
       - key: GITHUB_TOKEN
         value: ""
         scope: RUN_TIME
         type: SECRET
 
-      # Branch to sync (leave empty for main/master)
       - key: GITHUB_BRANCH
         value: ""
         scope: RUN_TIME
 
-      # For monorepos: specify subfolder (e.g., "apps/frontend")
       - key: GITHUB_REPO_FOLDER
         value: ""
         scope: RUN_TIME
 
       # === Application Startup ===
-      # Command to start your app
-      # Leave empty if you have dev_startup.sh in your repo root
-      # Examples:
-      #   - "npm run dev -- --host 0.0.0.0 --port 8080"
+      # Examples for Python:
       #   - "uvicorn main:app --host 0.0.0.0 --port 8080 --reload"
+      #   - "python -m flask run --host 0.0.0.0 --port 8080"
       #   - "bash dev_startup.sh"
       - key: DEV_START_COMMAND
         value: ""
         scope: RUN_TIME
 
       # === Sync Settings ===
-      # How often to sync from GitHub (seconds)
       - key: GITHUB_SYNC_INTERVAL
         value: "15"
         scope: RUN_TIME
@@ -94,9 +77,6 @@ services:
         scope: RUN_TIME
 
       # === Deploy Jobs (Optional) ===
-      # Scripts that run when code changes are detected
-
-      # Pre-deploy: runs before app starts (e.g., database migrations)
       - key: PRE_DEPLOY_FOLDER
         value: "scripts/pre-deploy"
         scope: RUN_TIME
@@ -107,7 +87,6 @@ services:
         value: "300"
         scope: RUN_TIME
 
-      # Post-deploy: runs after app starts (e.g., data seeding)
       - key: POST_DEPLOY_FOLDER
         value: "scripts/post-deploy"
         scope: RUN_TIME
