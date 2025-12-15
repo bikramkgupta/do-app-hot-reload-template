@@ -1,96 +1,219 @@
-# Agent Playbook: Deploy a User App with This Dev Template
+# AI Agent Playbook: Hot Reload Dev Environment
 
-**📖 For comprehensive system reference, see [CLAUDE.md](CLAUDE.md) first.**
+**Deploy a dev/staging environment in ~1 minute using pre-built Docker images.**
 
-Docs map: `CLAUDE.md` = AI agent source of truth, `README.md` = how humans use it, `CUSTOMIZATION.md` = how to fork/extend it, `AGENT.md` = quick deployment playbook.
+## The Philosophy
 
-**Essential Reference:** See [`App_Platform_Commands.md`](App_Platform_Commands.md) for all `doctl` commands needed for deployment, monitoring, and debugging.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  CONTAINER CONFIG (DO Console) - Just 2 things:                 │
+│    • GITHUB_REPO_URL → Where's the code?                       │
+│    • DEV_START_COMMAND → How to start it?                      │
+└─────────────────────────────────────────────────────────────────┘
 
-## What to Collect from the User
+┌─────────────────────────────────────────────────────────────────┐
+│  APP CONFIG (User's .env file) - Everything else:               │
+│    • DATABASE_URL, API_KEY, STRIPE_SECRET, etc.                │
+│    • Change .env → git push → syncs in 15 seconds              │
+│    • No DO redeploy needed!                                     │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-- App repo URL (and GitHub token if private).
-- Startup plan: preferred `DEV_START_COMMAND` (default `bash dev_startup.sh`) or confirm repo already has `dev_startup.sh`/`startup.sh`.
-- Runtimes to install via build args (`INSTALL_NODE/PYTHON/GOLANG/RUST/RUBY`, DB clients).
-- Health check choice: default `/dev_health` on port `9090` is for first deploy only (built-in Go binary, always available); plan to point checks to the app's endpoint/port and disable the built-in server afterward via `ENABLE_DEV_HEALTH=false`.
-- App name/region/size (for `app.yaml`), sync interval if they want non-default.
+## Quick Deploy (5 Steps)
 
-## Execution Flow (Keep It Short)
+### 1. Choose the right image
 
-1) **Verify access:** Ensure `doctl` is authenticated; optionally check `gh auth status` if you need repo management.  
-2) **Set expectations:** Remind the user this template container clones their app repo and runs it; code lives in their repo, not here.  
-3) **Fill config:** Edit `app.yaml` (or App Platform UI):
-   - Build args for runtimes/clients.
-   - Envs: `GITHUB_REPO_URL`, `GITHUB_TOKEN` (SECRET), `DEV_START_COMMAND` or rely on repo script, optional `GITHUB_SYNC_INTERVAL`, `WORKSPACE_PATH`.  
-   - Health check: keep `/dev_health` on `9090` unless the user prefers their own.
-   - Verify that deploy-on-push is NOT enabled. If it is enabled (true), then every git commit will result in app being re-deployed, which is NOT what we want.
-   - If the component is static_site, it will not work. Because the hot reload requires a container, and static site is deployed to Spaces object store. Only services and workers type components will work.
-4) **Deploy:** `doctl apps create --spec app.yaml` (or update existing). If using the DO button/UI, enter the same values.  
-5) **Verify:** Hit health endpoint, check logs (`doctl apps logs <app-id> --type run`), and confirm git sync pulls changes. Note that you can check the latest commit in the logs. For deeper container inspection, use the remote exec tool (see `App_Platform_Commands.md` → "Execute commands in running containers").
+| Runtime | Image |
+|---------|-------|
+| Node.js | `ghcr.io/bikramkgupta/hot-reload-node` |
+| Python | `ghcr.io/bikramkgupta/hot-reload-python` |
+| Go | `ghcr.io/bikramkgupta/hot-reload-go` |
+| Node + Python | `ghcr.io/bikramkgupta/hot-reload-node-python` |
+| All runtimes | `ghcr.io/bikramkgupta/hot-reload-full` |
 
-## Smart Defaults
+### 2. Create app spec
 
-- `DEV_START_COMMAND="bash dev_startup.sh"`; repo `dev_startup.sh`/`startup.sh` is used if present and `DEV_START_COMMAND` is empty.
-- Built-in `/dev_health` (lightweight Go binary, ~2MB) is just a bootstrap aid. Move health to the app, set `ENABLE_DEV_HEALTH=false`, and disable unused runtimes for smaller images.
-- App listens on `8080`; health server listens on `9090`.
-- Sync interval: `30` seconds unless the user asks otherwise.
+```yaml
+name: dev-environment
+region: syd1
 
-## Reminders
+services:
+  - name: dev-workspace
+    image:
+      registry_type: GHCR
+      repository: bikramkgupta/hot-reload-node  # Change for your runtime
+      tag: latest
+    http_port: 8080
+    health_check:
+      http_path: /health
+      port: 8080
+    envs:
+      - key: GITHUB_REPO_URL
+        value: "https://github.com/USER/REPO"
+      - key: DEV_START_COMMAND
+        value: "bash dev_startup.sh"
+      # Only if private repo:
+      - key: GITHUB_TOKEN
+        value: ""
+        type: SECRET
+```
 
-- Git pulls do **not** restart the app; the user's dev server should handle reloads, or they must restart the container after dependency changes.
-- Keep tokens as secrets; never commit them. Confirm before creating repos or pushing code.
-- For deeper template changes (new runtimes, custom sync/health), hand off to `CUSTOMIZATION.md`.
+### 3. Deploy
+
+```bash
+doctl apps create --spec app.yaml
+```
+
+### 4. Verify
+
+```bash
+# Get app ID
+APP_ID=$(doctl apps list --format ID --no-header | head -1)
+
+# Check deployment status
+doctl apps get $APP_ID -o json | jq -r '.active_deployment.phase'
+# Should be: ACTIVE
+
+# View logs
+doctl apps logs $APP_ID dev-workspace --type run --follow
+
+# Test health endpoint
+curl https://YOUR-APP-URL.ondigitalocean.app/health
+```
+
+### 5. Done!
+
+The container is now syncing code every 15 seconds. Changes to the user's repo appear automatically.
 
 ---
 
-## Blank Template to Production Workflow
+## User's Repository Setup
 
-**When user starts with deploy-blank and adds their own app, follow this checklist:**
+Tell users their repo needs:
 
-### Initial State (Blank Template)
-```yaml
-internal_ports:
-  - 9090                          # For dev health server
-http_port: 8080
-health_check:
-  http_path: /dev_health
-  port: 9090
-ENABLE_DEV_HEALTH: "true"
-DEV_START_COMMAND: ""
-GITHUB_REPO_URL: ""
+### dev_startup.sh (required)
+
+```bash
+#!/bin/bash
+# Load app config from .env
+if [ -f .env ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+fi
+
+# Install dependencies and start dev server
+npm install
+npm run dev -- --host 0.0.0.0 --port 8080
 ```
 
-### Required Changes When Adding User's App
+### .env file (for app config)
 
-**Configuration Checklist:**
-- [ ] **REMOVE `internal_ports`** section entirely (critical - causes validation error if left)
-- [ ] **Update `health_check.port`** from `9090` to `8080`
-- [ ] **Update `health_check.http_path`** to user's endpoint (e.g., `/health`, `/api/health`)
-- [ ] **Set `ENABLE_DEV_HEALTH`** to `"false"`
-- [ ] **Set `DEV_START_COMMAND`** to `"bash dev_startup.sh"` or user's startup command
-- [ ] **Set `GITHUB_REPO_URL`** to user's repository URL
-- [ ] **Set `GITHUB_TOKEN`** if private repo (mark as SECRET)
-- [ ] **Set appropriate `INSTALL_*`** build args for user's runtime
-
-### Final State (User's App)
-```yaml
-# internal_ports: REMOVED
-http_port: 8080
-health_check:
-  http_path: /health              # User's endpoint
-  port: 8080                      # Changed from 9090
-ENABLE_DEV_HEALTH: "false"
-DEV_START_COMMAND: "bash dev_startup.sh"
-GITHUB_REPO_URL: "https://github.com/user/repo"
+```bash
+# App configuration - NOT in DO Console!
+DATABASE_URL=postgresql://user:pass@host:5432/db
+API_KEY=sk-xxxxx
+STRIPE_SECRET=sk_test_xxxxx
 ```
 
-### Common Error If Misconfigured
-```
-Error validating app spec field "services.health_check.port":
-health check port "9090" not found in internal_ports.
-```
-**Fix:** Remove `internal_ports` and update `health_check.port` to `8080`.
+**Key point:** Changes to `.env` → git push → syncs in 15 seconds. No DO redeploy needed.
 
-### File Sync Reminder
-When updating configuration, ensure these files stay in sync:
-- `.do/deploy.template.yaml` (deploy button)
-- `app.yaml` (doctl deployment)
+---
+
+## Common Tasks
+
+### Exec into container (for debugging)
+
+Using [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox):
+
+```bash
+pip install do-app-sandbox
+sandbox exec $APP_ID "ls -la /workspaces/app"
+sandbox exec $APP_ID "cat /workspaces/app/.env"
+sandbox exec $APP_ID "ps aux"
+```
+
+### Check sync status
+
+```bash
+sandbox exec $APP_ID "cat /tmp/last_job_commit.txt"
+sandbox exec $APP_ID "cd /workspaces/app && git log -1 --oneline"
+```
+
+### Force redeploy (if needed)
+
+```bash
+doctl apps create-deployment $APP_ID
+```
+
+### Update environment variable
+
+```bash
+# Get current spec
+doctl apps spec get $APP_ID > spec.yaml
+
+# Edit spec.yaml, then:
+doctl apps update $APP_ID --spec spec.yaml
+```
+
+---
+
+## Troubleshooting
+
+| Issue | Check | Fix |
+|-------|-------|-----|
+| Container not starting | `doctl apps logs $APP_ID --type deploy` | Check image name |
+| App not running | `doctl apps logs $APP_ID --type run` | Check DEV_START_COMMAND |
+| Code not syncing | `sandbox exec $APP_ID "cd /workspaces/app && git status"` | Check GITHUB_REPO_URL |
+| Health check failing | `curl https://APP-URL/health` | Ensure app listens on 8080 |
+| Private repo access denied | Check logs for auth errors | Set GITHUB_TOKEN as secret |
+
+---
+
+## What NOT to Do
+
+1. **Don't put app config (DATABASE_URL, API_KEY) in DO Console** - Put it in `.env` file
+2. **Don't rebuild/redeploy for config changes** - Just git push the `.env` change
+3. **Don't use `dockerfile_path`** - Use pre-built images for ~1 minute deploys
+4. **Don't enable `deploy_on_push`** - We want git sync, not full rebuilds
+
+---
+
+## Files Reference
+
+```
+app-specs/
+├── app-node.yaml      # Node.js image
+├── app-python.yaml    # Python image
+├── app-go.yaml        # Go image
+└── app-full.yaml      # All runtimes
+
+# In container:
+/workspaces/app/       # User's cloned repo
+/tmp/last_job_commit.txt  # Last synced commit
+```
+
+---
+
+## doctl Commands Cheat Sheet
+
+```bash
+# List apps
+doctl apps list
+
+# Get app details
+doctl apps get $APP_ID
+
+# View logs
+doctl apps logs $APP_ID COMPONENT --type run
+doctl apps logs $APP_ID COMPONENT --type build
+doctl apps logs $APP_ID COMPONENT --type deploy
+
+# Get/update spec
+doctl apps spec get $APP_ID > spec.yaml
+doctl apps update $APP_ID --spec spec.yaml
+
+# Force redeploy
+doctl apps create-deployment $APP_ID
+
+# Delete app
+doctl apps delete $APP_ID
+```

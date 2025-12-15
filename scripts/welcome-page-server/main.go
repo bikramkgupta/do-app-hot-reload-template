@@ -192,19 +192,6 @@ const welcomePageHTML = `<!DOCTYPE html>
             border-radius: 8px;
             border-left: 4px solid #0080ff;
         }
-        .step-number {
-            display: inline-block;
-            background: #0080ff;
-            color: white;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            text-align: center;
-            line-height: 24px;
-            font-weight: bold;
-            font-size: 0.85em;
-            margin-right: 8px;
-        }
         .code-block {
             background: #2d2d2d;
             color: #f8f8f2;
@@ -217,10 +204,11 @@ const welcomePageHTML = `<!DOCTYPE html>
         }
         .env-var { color: #a6e22e; }
         .value { color: #ae81ff; }
+        .comment { color: #75715e; }
         .hint { color: #888; font-style: italic; font-size: 0.85em; }
-        .warning {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
+        .info {
+            background: #e7f3ff;
+            border-left: 4px solid #0080ff;
             padding: 12px;
             margin: 12px 0;
             border-radius: 4px;
@@ -247,7 +235,7 @@ const welcomePageHTML = `<!DOCTYPE html>
 <body>
     <div class="container">
         <h1>Hot Reload Dev Environment</h1>
-        <p class="subtitle">Your container deployed in ~1 minute! Now connect your application.</p>
+        <p class="subtitle">Container deployed in ~1 minute. Now point it to your code.</p>
 
         <div class="status">
             <div class="status-item">
@@ -259,79 +247,70 @@ const welcomePageHTML = `<!DOCTYPE html>
                 {{if eq .DevStartCommand "not set"}}<span style="color:#856404">not set</span><span class="badge badge-warning">Optional</span>{{else}}<span style="color:#28a745">{{.DevStartCommand}}</span><span class="badge badge-success">OK</span>{{end}}
             </div>
             <div class="status-item">
-                <span class="status-label">Sync Interval:</span> {{.SyncInterval}}s
-                <span class="hint">(code syncs automatically)</span>
+                <span class="status-label">Sync:</span> every {{.SyncInterval}}s
             </div>
         </div>
 
         {{if eq .RepoURL "not set"}}
         <div class="section">
-            <h2>Quick Start (2 steps)</h2>
-
-            <div class="step">
-                <span class="step-number">1</span>
-                <strong>Set your repository URL</strong>
-                <p style="margin-top: 8px;">Go to App Platform Console → Settings → Environment Variables:</p>
-                <div class="code-block">
-                    <code><span class="env-var">GITHUB_REPO_URL</span> = <span class="value">https://github.com/your-username/your-repo</span></code>
-                </div>
-                <p class="hint">For private repos, also set GITHUB_TOKEN (as a secret)</p>
+            <h2>Setup (DO Console)</h2>
+            <p style="margin-bottom: 12px;">Set these 2 environment variables in App Platform Console:</p>
+            <div class="code-block">
+<span class="env-var">GITHUB_REPO_URL</span> = <span class="value">https://github.com/you/your-app</span>
+<span class="env-var">DEV_START_COMMAND</span> = <span class="value">bash dev_startup.sh</span>
+<span class="comment"># For private repos, also set GITHUB_TOKEN (as secret)</span>
             </div>
-
-            <div class="step">
-                <span class="step-number">2</span>
-                <strong>Set your startup command</strong>
-                <div class="code-block">
-                    <code><span class="env-var">DEV_START_COMMAND</span> = <span class="value">bash dev_startup.sh</span></code>
-                </div>
-                <p style="margin-top: 8px;"><strong>Example dev_startup.sh in your repo:</strong></p>
-                <div class="code-block">
-                    <code>#!/bin/bash<br>npm install<br>npm run dev -- --host 0.0.0.0 --port 8080</code>
-                </div>
-            </div>
+            <p class="hint" style="margin-top: 8px;">That's all the container needs. Redeploy after setting these.</p>
         </div>
 
-        <div class="warning">
-            <strong>No rebuild needed!</strong> Just set the environment variables and redeploy. Your code will be cloned from GitHub automatically.
+        <div class="info">
+            <strong>Your app config goes in your .env file, not here.</strong>
+            <p style="margin-top: 6px;">DATABASE_URL, API_KEY, etc. → put in <code>.env</code> in your repo. Changes sync in 15 seconds without redeploy.</p>
         </div>
         {{else}}
         <div class="success">
-            <strong>Repository Connected!</strong>
-            <p>Your code from <code>{{.RepoURL}}</code> will sync every {{.SyncInterval}} seconds.</p>
+            <strong>Connected!</strong> Code syncs every {{.SyncInterval}} seconds.
             {{if eq .DevStartCommand "not set"}}
-            <p style="margin-top: 8px;"><strong>Next:</strong> Set <code>DEV_START_COMMAND</code> or add <code>dev_startup.sh</code> to your repo.</p>
-            {{else}}
-            <p style="margin-top: 8px;">Your app should start automatically. Check logs if you don't see it.</p>
+            <p style="margin-top: 8px;">Add <code>dev_startup.sh</code> to your repo or set <code>DEV_START_COMMAND</code>.</p>
             {{end}}
+        </div>
+
+        <div class="info">
+            <strong>App config belongs in your .env file</strong>
+            <p style="margin-top: 6px;">DATABASE_URL, API keys, etc. → <code>.env</code> in your repo. Push changes, they sync automatically. No redeploy needed.</p>
         </div>
         {{end}}
 
         <div class="section">
-            <h2>Example Startup Scripts</h2>
+            <h2>Example dev_startup.sh</h2>
+            <div class="code-block">
+<span class="comment">#!/bin/bash</span>
+<span class="comment"># Load your app config from .env</span>
+<span class="env-var">if</span> [ -f .env ]; <span class="env-var">then</span>
+    <span class="env-var">export</span> $(cat .env | grep -v '^#' | xargs)
+<span class="env-var">fi</span>
 
-            <div class="step">
-                <strong>Node.js / Next.js</strong>
-                <div class="code-block"><code>npm install && npm run dev -- --host 0.0.0.0 --port 8080</code></div>
+npm install
+npm run dev -- --host 0.0.0.0 --port 8080
             </div>
-
-            <div class="step">
-                <strong>Python / FastAPI</strong>
-                <div class="code-block"><code>pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8080 --reload</code></div>
-            </div>
-
-            <div class="step">
-                <strong>Go</strong>
-                <div class="code-block"><code>go mod tidy && go run .</code></div>
-            </div>
+            <p class="hint">Your .env file: DATABASE_URL, API_KEY, etc. Git push → syncs in 15s.</p>
         </div>
 
-        <div class="warning">
-            <strong>Your app must listen on port 8080</strong> and bind to <code>0.0.0.0</code> (not localhost).
+        <div class="section">
+            <h2>The Philosophy</h2>
+            <div class="step">
+                <strong>Container config (DO Console):</strong> Where's your code? How to start it?
+                <div class="code-block" style="margin-top:8px">GITHUB_REPO_URL, DEV_START_COMMAND</div>
+            </div>
+            <div class="step">
+                <strong>App config (your .env file):</strong> Everything else
+                <div class="code-block" style="margin-top:8px">DATABASE_URL, API_KEY, STRIPE_SECRET, etc.</div>
+            </div>
+            <p class="hint" style="margin-top: 12px;">Change .env → git push → syncs in 15 seconds. No DO redeploy needed!</p>
         </div>
 
         <div class="footer">
-            <p>Container started: {{.Timestamp}}</p>
-            <p>Health endpoint: <code>/health</code> on port 8080</p>
+            <p>Container started: {{.Timestamp}} | Health: <code>/health</code> port 8080</p>
         </div>
     </div>
 </body>
