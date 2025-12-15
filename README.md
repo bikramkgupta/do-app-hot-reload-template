@@ -6,21 +6,25 @@ Pre-built Docker images with Node.js, Python, or Go ready to go. Deploy any code
 
 ## Why This Exists
 
-DigitalOcean App Platform builds take 8-12 minutes. Every code change = wait 10 minutes. That kills development velocity.
+Standard App Platform deploys go through build, push to registry, and deploy—which is great for production stability. For **development and testing branches** where you need to iterate rapidly, this template offers a faster alternative.
 
-**This template fixes that.** Pre-built images skip the build phase entirely:
+**Pre-built images skip the build phase entirely:**
 
-| Approach | Deploy Time | Iteration |
-|----------|-------------|-----------|
-| Traditional (Dockerfile) | 8-12 min | Slow |
-| **Pre-built Image** | **~1 min** | **Fast** |
+| Use Case | Approach | Deploy Time |
+|----------|----------|-------------|
+| Production | Standard build + deploy | Reliable, thorough |
+| **Dev/Testing** | **Pre-built image** | **~1 minute** |
 
 - **~1 minute deploys** - Pull image, start container, done
 - **Shell access** - Debug with [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox) when things break
 - **AI-ready** - Point Claude Code at your container and let it fix issues remotely
 - **Hot reload** - Code syncs every 15 seconds, your dev server handles the rest
 
+> **Note:** If you don't configure anything, the container still works—you'll see the welcome page and can shell in to explore.
+
 ## Quick Start
+
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-hot-reload-template/tree/main)
 
 ### 1. Deploy the Container (~1 minute)
 
@@ -52,6 +56,8 @@ After deployment, set environment variables:
 npm install
 npm run dev -- --host 0.0.0.0 --port 8080
 ```
+
+See [`examples/`](examples/) for startup scripts that handle dependency changes automatically (Next.js, Python, Go, Rails).
 
 That's it! Your app syncs from GitHub every 15 seconds with hot reload.
 
@@ -204,6 +210,11 @@ docker push ghcr.io/you/hot-reload-custom
 │   ├── app-python.yaml
 │   ├── app-go.yaml
 │   └── app-full.yaml
+├── examples/              # Startup script examples
+│   ├── dev_startup_nextjs.sh
+│   ├── dev_startup_python.sh
+│   ├── dev_startup_go.sh
+│   └── dev_startup_rails.sh
 ├── scripts/
 │   ├── startup.sh         # Container entrypoint
 │   ├── github-sync.sh     # Continuous sync daemon
