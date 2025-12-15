@@ -1,0 +1,96 @@
+#
+# DigitalOcean App Platform - Hot Reload Dev Environment
+# Pre-built Ruby Image (Deploys in ~1 minute!)
+#
+# Usage:
+#   doctl apps create --spec app-specs/app-ruby.yaml
+#
+# After deployment, configure your app in the DO Console:
+#   - Set GITHUB_REPO_URL to your repository
+#   - Set GITHUB_TOKEN if private repo (as secret)
+#   - Set DEV_START_COMMAND or add dev_startup.sh to your repo
+#
+
+name: hot-reload-dev
+region: syd1
+
+services:
+  - name: dev-workspace
+    # Pre-built image from GitHub Container Registry
+    # No build phase = deploy in ~1 minute!
+    image:
+      registry_type: GHCR
+      repository: bikramkgupta/hot-reload-ruby
+      tag: latest
+
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+
+    # Application port
+    http_port: 8080
+
+    # Health check on port 8080 (welcome-page-server responds until your app starts)
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+      port: 8080
+
+    envs:
+      # === Your Application Repository ===
+      - key: GITHUB_REPO_URL
+        value: ""
+        scope: RUN_TIME
+
+      - key: GITHUB_TOKEN
+        value: ""
+        scope: RUN_TIME
+        type: SECRET
+
+      - key: GITHUB_BRANCH
+        value: ""
+        scope: RUN_TIME
+
+      - key: GITHUB_REPO_FOLDER
+        value: ""
+        scope: RUN_TIME
+
+      # === Application Startup ===
+      # Examples for Ruby/Rails:
+      #   - "bundle exec rails server -b 0.0.0.0 -p 8080"
+      #   - "bundle exec rackup -o 0.0.0.0 -p 8080"
+      #   - "bash dev_startup.sh"
+      - key: DEV_START_COMMAND
+        value: ""
+        scope: RUN_TIME
+
+      # === Sync Settings ===
+      - key: GITHUB_SYNC_INTERVAL
+        value: "15"
+        scope: RUN_TIME
+
+      - key: WORKSPACE_PATH
+        value: "/workspaces/app"
+        scope: RUN_TIME
+
+      # === Deploy Jobs (Optional) ===
+      # Commands run on git commit change (e.g., "bundle exec rails db:migrate")
+      - key: PRE_DEPLOY_COMMAND
+        value: ""
+        scope: RUN_TIME
+      - key: PRE_DEPLOY_TIMEOUT
+        value: "300"
+        scope: RUN_TIME
+      - key: POST_DEPLOY_COMMAND
+        value: ""
+        scope: RUN_TIME
+      - key: POST_DEPLOY_TIMEOUT
+        value: "300"
+        scope: RUN_TIME
+
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED

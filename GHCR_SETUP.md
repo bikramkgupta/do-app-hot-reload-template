@@ -10,6 +10,7 @@ After the GitHub Actions workflow builds and pushes your Docker images to GitHub
    - `hot-reload-node`
    - `hot-reload-python`
    - `hot-reload-go`
+   - `hot-reload-ruby`
    - `hot-reload-node-python`
    - `hot-reload-full`
 
@@ -58,6 +59,7 @@ Direct links to your packages (after they're published):
 - https://github.com/bikramkgupta/packages/container/hot-reload-node
 - https://github.com/bikramkgupta/packages/container/hot-reload-python
 - https://github.com/bikramkgupta/packages/container/hot-reload-go
+- https://github.com/bikramkgupta/packages/container/hot-reload-ruby
 - https://github.com/bikramkgupta/packages/container/hot-reload-node-python
 - https://github.com/bikramkgupta/packages/container/hot-reload-full
 

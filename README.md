@@ -68,6 +68,7 @@ That's it! Your app syncs from GitHub every 15 seconds with hot reload.
 | `ghcr.io/bikramkgupta/hot-reload-node` | Node.js 22/24 | Next.js, React, Express |
 | `ghcr.io/bikramkgupta/hot-reload-python` | Python 3.12/3.13 | FastAPI, Django, Flask |
 | `ghcr.io/bikramkgupta/hot-reload-go` | Go 1.23 | Go APIs, CLI tools |
+| `ghcr.io/bikramkgupta/hot-reload-ruby` | Ruby 3.4/3.3 | Rails, Sinatra, Hanami |
 | `ghcr.io/bikramkgupta/hot-reload-node-python` | Node.js + Python | Full-stack apps |
 | `ghcr.io/bikramkgupta/hot-reload-full` | Node + Python + Go | Multi-language |
 
@@ -165,6 +166,13 @@ go mod tidy
 go run .
 ```
 
+### Ruby / Rails
+```bash
+#!/bin/bash
+bundle install
+bundle exec rails server -b 0.0.0.0 -p 8080
+```
+
 ## Important Notes
 
 - **Port 8080**: Your app must listen on port 8080, bound to `0.0.0.0`
@@ -220,6 +228,7 @@ See [GHCR_SETUP.md](GHCR_SETUP.md) for detailed instructions with screenshots.
 │   ├── app-node.yaml
 │   ├── app-python.yaml
 │   ├── app-go.yaml
+│   ├── app-ruby.yaml
 │   └── app-full.yaml
 ├── examples/              # Startup script examples
 │   ├── dev_startup_nextjs.sh

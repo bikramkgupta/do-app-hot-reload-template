@@ -46,6 +46,13 @@ jobs:
             install_golang: "true"
             install_rust: "false"
             install_ruby: "false"
+          # Ruby only
+          - variant: ruby
+            install_node: "false"
+            install_python: "false"
+            install_golang: "false"
+            install_rust: "false"
+            install_ruby: "true"
           # Node + Python (common combo for full-stack)
           - variant: node-python
             install_node: "true"
@@ -145,6 +152,7 @@ jobs:
           echo "| \`ghcr.io/${{ github.repository_owner }}/hot-reload-node\` | Node.js 22/24 | Next.js, React, Express |" >> $GITHUB_STEP_SUMMARY
           echo "| \`ghcr.io/${{ github.repository_owner }}/hot-reload-python\` | Python 3.12/3.13 | FastAPI, Django, Flask |" >> $GITHUB_STEP_SUMMARY
           echo "| \`ghcr.io/${{ github.repository_owner }}/hot-reload-go\` | Go 1.23 | Go APIs, CLI tools |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`ghcr.io/${{ github.repository_owner }}/hot-reload-ruby\` | Ruby 3.4/3.3 | Rails, Sinatra, Hanami |" >> $GITHUB_STEP_SUMMARY
           echo "| \`ghcr.io/${{ github.repository_owner }}/hot-reload-node-python\` | Node.js + Python | Full-stack apps |" >> $GITHUB_STEP_SUMMARY
           echo "| \`ghcr.io/${{ github.repository_owner }}/hot-reload-full\` | Node.js + Python + Go | Multi-language projects |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
