@@ -1,19 +1,24 @@
 # Hot Reload Dev Environment for DigitalOcean App Platform
 
-> **Deploy in ~1 minute, iterate instantly.** Pre-built Docker images with your runtime ready to go.
+> **Fast deploys. Shell access. AI-assisted debugging.** Test development branches in minutes, not hours. When things break, you have a shell and an AI to fix it.
 
-## The Problem
+Pre-built Docker images with Node.js, Python, or Go ready to go. Deploy any codebase to DO App Platform in ~1 minute.
 
-DigitalOcean App Platform builds take 5-10 minutes. Every code change = wait 10 minutes. That's painful for development.
+## Why This Exists
 
-## The Solution
+DigitalOcean App Platform builds take 8-12 minutes. Every code change = wait 10 minutes. That kills development velocity.
 
-**Pre-built images.** We build Docker images with Node.js, Python, Go pre-installed and publish them to GitHub Container Registry. You deploy these images directly - no build phase.
+**This template fixes that.** Pre-built images skip the build phase entirely:
 
 | Approach | Deploy Time | Iteration |
 |----------|-------------|-----------|
 | Traditional (Dockerfile) | 8-12 min | Slow |
 | **Pre-built Image** | **~1 min** | **Fast** |
+
+- **~1 minute deploys** - Pull image, start container, done
+- **Shell access** - Debug with [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox) when things break
+- **AI-ready** - Point Claude Code at your container and let it fix issues remotely
+- **Hot reload** - Code syncs every 15 seconds, your dev server handles the rest
 
 ## Quick Start
 
