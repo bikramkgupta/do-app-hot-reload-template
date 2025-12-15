@@ -17,7 +17,7 @@ Standard App Platform deploys go through build, push to registry, and deploy—w
 
 - **~1 minute deploys** - Pull image, start container, done
 - **Shell access** - Debug with [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox) when things break
-- **AI-ready** - Point Claude Code at your container and let it fix issues remotely
+- **AI-ready** - Point your favorite AI assistant at your container and let it fix issues remotely
 - **Hot reload** - Code syncs every 15 seconds, your dev server handles the rest
 
 > **Note:** If you don't configure anything, the container still works—you'll see the welcome page and can shell in to explore.
