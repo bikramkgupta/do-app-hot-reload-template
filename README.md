@@ -191,6 +191,17 @@ docker tag my-custom-hot-reload ghcr.io/you/hot-reload-custom
 docker push ghcr.io/you/hot-reload-custom
 ```
 
+### Making GHCR Packages Public
+
+After pushing images to GitHub Container Registry, they're **private by default**. To make them public so anyone can pull without authentication:
+
+1. Go to https://github.com/[your-username]?tab=packages
+2. Click on your package → **Package settings**
+3. Scroll to **"Change package visibility"** → Select **Public**
+4. Under **"Connect repository"**, link it to this repo
+
+See [GHCR_SETUP.md](GHCR_SETUP.md) for detailed instructions with screenshots.
+
 ## Troubleshooting
 
 | Issue | Solution |
