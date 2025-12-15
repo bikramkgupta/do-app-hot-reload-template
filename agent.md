@@ -118,25 +118,57 @@ STRIPE_SECRET=sk_test_xxxxx
 
 ---
 
-## Common Tasks
+## Remote Troubleshooting with do-app-sandbox
 
-### Exec into container (for debugging)
+**AI agents can remotely control and troubleshoot the running container** using [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox).
 
-Using [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox):
+### Installation
 
 ```bash
+# Requires Python 3.10.12+ and doctl authenticated
 pip install do-app-sandbox
-sandbox exec $APP_ID "ls -la /workspaces/app"
-sandbox exec $APP_ID "cat /workspaces/app/.env"
-sandbox exec $APP_ID "ps aux"
 ```
 
-### Check sync status
+### Execute Commands in Container
 
 ```bash
-sandbox exec $APP_ID "cat /tmp/last_job_commit.txt"
+# Run any command in the running container
+sandbox exec $APP_ID "ls -la /workspaces/app"
+sandbox exec $APP_ID "cat .env"
+sandbox exec $APP_ID "ps aux"
+sandbox exec $APP_ID "node --version"
+
+# Check git sync status
 sandbox exec $APP_ID "cd /workspaces/app && git log -1 --oneline"
+sandbox exec $APP_ID "cat /tmp/last_job_commit.txt"
+
+# Debug application issues
+sandbox exec $APP_ID "cat /workspaces/app/package.json"
+sandbox exec $APP_ID "npm list --depth=0"
+sandbox exec $APP_ID "tail -50 /tmp/app.log"
 ```
+
+### Common Debugging Scenarios
+
+| What to Check | Command |
+|---------------|---------|
+| Is code synced? | `sandbox exec $APP_ID "cd /workspaces/app && git log -1"` |
+| What's running? | `sandbox exec $APP_ID "ps aux"` |
+| Check .env loaded | `sandbox exec $APP_ID "env \| grep DATABASE"` |
+| View app logs | `sandbox exec $APP_ID "cat /tmp/*.log"` |
+| Check disk space | `sandbox exec $APP_ID "df -h"` |
+| Test connectivity | `sandbox exec $APP_ID "curl -I https://api.example.com"` |
+
+### Why This Matters for AI Agents
+
+1. **Verify before changing** - Check container state before updating config
+2. **Debug without redeploy** - Inspect logs, env vars, processes live
+3. **Fast iteration** - Test commands directly, then add to dev_startup.sh
+4. **Validate fixes** - Confirm changes worked without waiting for redeploy
+
+---
+
+## Other Common Tasks
 
 ### Force redeploy (if needed)
 
