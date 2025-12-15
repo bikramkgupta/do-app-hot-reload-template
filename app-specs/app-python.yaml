@@ -77,18 +77,12 @@ services:
         scope: RUN_TIME
 
       # === Deploy Jobs (Optional) ===
-      - key: PRE_DEPLOY_FOLDER
-        value: "scripts/pre-deploy"
-        scope: RUN_TIME
+      # Commands run on git commit change (e.g., "python manage.py migrate")
       - key: PRE_DEPLOY_COMMAND
         value: ""
         scope: RUN_TIME
       - key: PRE_DEPLOY_TIMEOUT
         value: "300"
-        scope: RUN_TIME
-
-      - key: POST_DEPLOY_FOLDER
-        value: "scripts/post-deploy"
         scope: RUN_TIME
       - key: POST_DEPLOY_COMMAND
         value: ""

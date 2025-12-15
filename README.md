@@ -122,14 +122,14 @@ See `app-specs/` for complete examples.
 
 ### Deploy Jobs (Optional)
 
-Run scripts when code changes are detected:
+Run commands when code changes are detected (on git commit change, not every sync):
 
-| Variable | Description |
-|----------|-------------|
-| `PRE_DEPLOY_COMMAND` | Runs before app starts (e.g., migrations) |
-| `POST_DEPLOY_COMMAND` | Runs after app starts (e.g., seeding) |
-| `PRE_DEPLOY_FOLDER` | Script location (default: `scripts/pre-deploy`) |
-| `POST_DEPLOY_FOLDER` | Script location (default: `scripts/post-deploy`) |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PRE_DEPLOY_COMMAND` | - | Runs before app starts (e.g., `bash scripts/migrate.sh`) |
+| `PRE_DEPLOY_TIMEOUT` | 300 | Timeout in seconds |
+| `POST_DEPLOY_COMMAND` | - | Runs after app starts (e.g., `bash scripts/seed.sh`) |
+| `POST_DEPLOY_TIMEOUT` | 300 | Timeout in seconds |
 
 ## Example Startup Scripts
 

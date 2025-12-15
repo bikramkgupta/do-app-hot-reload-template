@@ -92,12 +92,13 @@ spec:
           scope: RUN_TIME
 
         # === Deploy Jobs (Optional) ===
-        # Scripts that run when code changes are detected
+        # Run commands when code changes are detected (on git commit change, not every sync)
+        # Examples:
+        #   - "npm run db:migrate"
+        #   - "python manage.py migrate"
+        #   - "bash scripts/migrate.sh"
 
-        # Pre-deploy: runs before app starts (e.g., database migrations)
-        - key: PRE_DEPLOY_FOLDER
-          value: "scripts/pre-deploy"
-          scope: RUN_TIME
+        # Pre-deploy: runs before app starts (must succeed or container exits)
         - key: PRE_DEPLOY_COMMAND
           value: ""
           scope: RUN_TIME
@@ -105,10 +106,7 @@ spec:
           value: "300"
           scope: RUN_TIME
 
-        # Post-deploy: runs after app starts (e.g., data seeding)
-        - key: POST_DEPLOY_FOLDER
-          value: "scripts/post-deploy"
-          scope: RUN_TIME
+        # Post-deploy: runs after app starts (failure logged, app continues)
         - key: POST_DEPLOY_COMMAND
           value: ""
           scope: RUN_TIME
