@@ -1,5 +1,12 @@
 # Hot Reload Dev Environment for DigitalOcean App Platform
 
+> **Experimental**: This is a personal project and is not officially supported by DigitalOcean. APIs may change without notice.
+
+This is part of 3 projects to scale Agentic workflows with DigitalOcean App Platform. The concepts are generic and should work with any PaaS:
+- Safe local sandboxing using DevContainers ([do-app-devcontainer](https://github.com/bikramkgupta/do-app-devcontainer))
+- Rapid development iteration using hot reload (this repo or [do-app-hot-reload-template](https://github.com/bikramkgupta/do-app-hot-reload-template))
+- Disposable environments using sandboxes for parallel experimentation and debugging ([do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox))
+
 > **Fast deploys. Shell access. AI-assisted debugging.** Test development branches in minutes, not hours. When things break, you have a shell and an AI to fix it.
 
 Pre-built Docker images with Node.js, Python, or Go ready to go. Deploy any codebase to DO App Platform in ~1 minute.
