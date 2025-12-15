@@ -217,4 +217,4 @@ To request a new runtime combination, open an issue.
 
 ---
 
-**Questions?** Open an issue or check [CLAUDE.md](CLAUDE.md) for detailed documentation.
+**Questions?** Open an issue or check [agent.md](agent.md) for the AI assistant deployment guide.
