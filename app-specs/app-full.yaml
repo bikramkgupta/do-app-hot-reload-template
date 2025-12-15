@@ -14,7 +14,8 @@ services:
   - name: dev-workspace
     image:
       registry_type: GHCR
-      repository: bikramkgupta/hot-reload-full
+      registry: bikramkgupta
+      repository: hot-reload-full
       tag: latest
 
     instance_count: 1

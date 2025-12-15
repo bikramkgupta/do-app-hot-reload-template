@@ -20,7 +20,8 @@ services:
     # No build phase = deploy in ~1 minute!
     image:
       registry_type: GHCR
-      repository: bikramkgupta/hot-reload-ruby
+      registry: bikramkgupta
+      repository: hot-reload-ruby
       tag: latest
 
     instance_count: 1

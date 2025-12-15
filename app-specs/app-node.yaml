@@ -20,7 +20,8 @@ services:
     # No build phase = deploy in ~1 minute!
     image:
       registry_type: GHCR
-      repository: bikramkgupta/hot-reload-node
+      registry: bikramkgupta
+      repository: hot-reload-node
       tag: latest
 
     instance_count: 1

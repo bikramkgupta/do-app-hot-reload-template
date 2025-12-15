@@ -20,7 +20,8 @@ services:
     # No build phase = deploy in ~1 minute!
     image:
       registry_type: GHCR
-      repository: bikramkgupta/hot-reload-python
+      registry: bikramkgupta
+      repository: hot-reload-python
       tag: latest
 
     instance_count: 1

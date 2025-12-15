@@ -13,11 +13,12 @@
 #   - Set DEV_START_COMMAND or add dev_startup.sh to your repo
 #
 # Available images (change repository below to match your runtime):
-#   - bikramkgupta/hot-reload-node       (Node.js 22/24)
-#   - bikramkgupta/hot-reload-python     (Python 3.12/3.13)
-#   - bikramkgupta/hot-reload-go         (Go 1.23)
-#   - bikramkgupta/hot-reload-node-python (Node.js + Python)
-#   - bikramkgupta/hot-reload-full       (Node.js + Python + Go)
+#   - hot-reload-node       (Node.js 22/24)
+#   - hot-reload-python     (Python 3.12/3.13)
+#   - hot-reload-go         (Go 1.23)
+#   - hot-reload-ruby       (Ruby 3.4/3.3)
+#   - hot-reload-node-python (Node.js + Python)
+#   - hot-reload-full       (Node.js + Python + Go)
 #
 
 name: hot-reload-dev
@@ -29,7 +30,8 @@ services:
     # Change the repository to match your runtime needs
     image:
       registry_type: GHCR
-      repository: bikramkgupta/hot-reload-node
+      registry: bikramkgupta
+      repository: hot-reload-node
       tag: latest
 
     instance_count: 1

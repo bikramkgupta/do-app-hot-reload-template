@@ -13,7 +13,8 @@ services:
   - name: dev-workspace
     image:
       registry_type: GHCR
-      repository: bikramkgupta/hot-reload-go
+      registry: bikramkgupta
+      repository: hot-reload-go
       tag: latest
 
     instance_count: 1
