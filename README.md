@@ -1,337 +1,236 @@
-# DigitalOcean App Platform Dev Template
+# Hot Reload Dev Environment for DigitalOcean App Platform
 
-> **Experimental**: This is a personal project and is not officially supported by DigitalOcean. APIs may change without notice.
+> **Fast deploys. Shell access. AI-assisted debugging.** Test development branches in minutes, not hours. When things break, you have a shell and an AI to fix it.
 
-> **📖 Documentation for AI Agents:** See [CLAUDE.md](CLAUDE.md) - Comprehensive reference for automated deployments
+Pre-built Docker images with Node.js, Python, or Go ready to go. Deploy any codebase to DO App Platform in ~1 minute.
 
-**Deploy once, iterate fast.** This template continuously syncs your GitHub repo and runs your dev server—no rebuild loop.
+## Why This Exists
 
-## 🚀 Quick Deploy - Choose Your Sample App
+Standard App Platform deploys go through build, push to registry, and deploy—which is great for production stability. For **development and testing branches** where you need to iterate rapidly, this template offers a faster alternative.
 
-Deploy a fully configured hot-reload development environment with one click:
+**Pre-built images skip the build phase entirely:**
 
-### Next.js Sample App
-Production-ready Next.js 14 with hot reload, health checks, and pre/post deploy hooks.
-- **Runtime:** Node.js 18+
-- **Features:** React 18, Crypto utilities, UUID generation
-- **Health:** `/api/health`
+| Use Case | Approach | Deploy Time |
+|----------|----------|-------------|
+| Production | Standard build + deploy | Reliable, thorough |
+| **Dev/Testing** | **Pre-built image** | **~1 minute** |
 
-[![Deploy Next.js](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-platform-ai-dev-workflow/tree/deploy-nextjs&refcode=2ede236d8435)
+- **~1 minute deploys** - Pull image, start container, done
+- **Shell access** - Debug with [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox) when things break
+- **AI-ready** - Point your favorite AI assistant at your container and let it fix issues remotely
+- **Hot reload** - Code syncs every 15 seconds, your dev server handles the rest
 
----
+> **Note:** If you don't configure anything, the container still works—you'll see the welcome page and can shell in to explore.
 
-### Python FastAPI Sample
-Modern Python FastAPI app with uv package manager and hot reload.
-- **Runtime:** Python 3.10+
-- **Features:** Password hashing (bcrypt), HTTP client, auto-reload
-- **Health:** `/health`
+## Quick Start
 
-[![Deploy Python](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-platform-ai-dev-workflow/tree/deploy-python&refcode=2ede236d8435)
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-hot-reload-template/tree/main)
 
----
+### 1. Deploy the Container (~1 minute)
 
-### Go Sample App
-High-performance Go HTTP server with file watching and hot rebuild.
-- **Runtime:** Go 1.21
-- **Features:** JWT tokens, UUID, bcrypt, YAML conversion
-- **Health:** `/health`
+```bash
+# Using doctl CLI
+doctl apps create --spec app.yaml
+```
 
-[![Deploy Go](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-platform-ai-dev-workflow/tree/deploy-go&refcode=2ede236d8435)
+Or use the DO Console:
+1. Create App → Deploy from Container Registry
+2. Registry: `ghcr.io`
+3. Image: `bikramkgupta/hot-reload-node` (or python, go, etc.)
+4. Tag: `latest`
 
----
+### 2. Configure Your App (DO Console)
 
-### Ruby on Rails Sample
-Full Rails 8.1 application with rbenv, auto-migrations, and hot reload.
-- **Runtime:** Ruby 3.4.7
-- **Features:** Rails 8.1, Hotwire, PostgreSQL support, auto-migrations
-- **Health:** `/health`
+After deployment, set environment variables:
 
-[![Deploy Rails](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-platform-ai-dev-workflow/tree/deploy-rails&refcode=2ede236d8435)
+| Variable | Value | Required |
+|----------|-------|----------|
+| `GITHUB_REPO_URL` | `https://github.com/you/your-app` | Yes |
+| `GITHUB_TOKEN` | Your PAT (for private repos) | If private |
+| `DEV_START_COMMAND` | `bash dev_startup.sh` | Recommended |
 
----
+### 3. Add dev_startup.sh to Your Repo
 
-### Node.js Express (Job Demo)
-Simple Express app demonstrating pre-deploy and post-deploy job hooks.
-- **Runtime:** Node.js 18+
-- **Features:** Pre/post deploy job execution, migration simulation
-- **Health:** `/health`
+```bash
+#!/bin/bash
+npm install
+npm run dev -- --host 0.0.0.0 --port 8080
+```
 
-[![Deploy Node.js](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-platform-ai-dev-workflow/tree/deploy-nodejs&refcode=2ede236d8435)
+See [`examples/`](examples/) for startup scripts that handle dependency changes automatically (Next.js, Python, Go, Rails).
 
----
+That's it! Your app syncs from GitHub every 15 seconds with hot reload.
 
-### Blank Template (Custom App)
-Deploy your own application - just point to your GitHub repo.
-- **Runtime:** Configure after deployment (Node.js default)
-- **Features:** Fully customizable, supports all runtimes
-- **Health:** Configure in settings
+## Available Images
 
-[![Deploy Blank](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-platform-ai-dev-workflow/tree/deploy-blank&refcode=2ede236d8435)
+| Image | Runtimes | Use Case |
+|-------|----------|----------|
+| `ghcr.io/bikramkgupta/hot-reload-node` | Node.js 22/24 | Next.js, React, Express |
+| `ghcr.io/bikramkgupta/hot-reload-python` | Python 3.12/3.13 | FastAPI, Django, Flask |
+| `ghcr.io/bikramkgupta/hot-reload-go` | Go 1.23 | Go APIs, CLI tools |
+| `ghcr.io/bikramkgupta/hot-reload-node-python` | Node.js + Python | Full-stack apps |
+| `ghcr.io/bikramkgupta/hot-reload-full` | Node + Python + Go | Multi-language |
 
-**After deployment:** Update environment variables in App Platform UI to point to your repository.
+## App Spec Example
 
-> **Important:** When configuring your app, you'll need to update health check settings. See [CUSTOMIZATION.md](CUSTOMIZATION.md#health-check-configuration) for details on `internal_ports` configuration.
+```yaml
+name: my-dev-app
+region: syd1
 
----
+services:
+  - name: dev-workspace
+    image:
+      registry_type: GHCR
+      repository: bikramkgupta/hot-reload-node
+      tag: latest
+    http_port: 8080
+    health_check:
+      http_path: /health
+      port: 8080
+    envs:
+      - key: GITHUB_REPO_URL
+        value: "https://github.com/you/your-app"
+      - key: DEV_START_COMMAND
+        value: "bash dev_startup.sh"
+```
+
+See `app-specs/` for complete examples.
 
 ## How It Works
 
-```mermaid
-graph TD
-    subgraph Template["Hot Reload Template"]
-        Config["Configure Runtimes<br/>Node.js / Python / Go / Ruby"]
-        Sync["GitHub Sync Daemon<br/>Pulls every 15s"]
-        Startup["dev_startup.sh<br/>Your startup script"]
-        PreHook["Pre-Deploy Hook<br/>scripts/pre-deploy"]
-        PostHook["Post-Deploy Hook<br/>scripts/post-deploy"]
-    end
-    
-    subgraph YourApp["Your Application"]
-        Repo["GitHub Repository<br/>Your code"]
-        DevServer["Dev Server<br/>Hot reload enabled"]
-    end
-    
-    Config --> Sync
-    Sync --> Repo
-    Repo --> Startup
-    Startup --> DevServer
-    Repo --> PreHook
-    PreHook --> DevServer
-    DevServer --> PostHook
-    
-    style Template fill:#e6f2ff,stroke:#0069ff
-    style YourApp fill:#f9f9f9,stroke:#333
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Your Deploy (~1 min)                                        │
+│                                                              │
+│  1. Pull pre-built image from GHCR (30 sec)                 │
+│  2. Start container                                          │
+│  3. Clone your repo from GitHub                             │
+│  4. Run your dev_startup.sh                                 │
+│  5. Your app is live!                                       │
+│                                                              │
+│  Continuous: Git sync every 15 seconds                      │
+│              Your dev server handles hot reload             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**The Flow:**
-1. **Template** - Deploy this template to App Platform
-2. **Configure** - Choose runtimes (Node.js, Python, Go, Ruby) via build args
-3. **Point to Your Code** - Set `GITHUB_REPO_URL` and `GITHUB_REPO_FOLDER` (or use default Next.js sample)
-4. **Startup Script** - Template runs `dev_startup.sh` from your repo (handles deps, hot reload)
-5. **Hooks** - Optional `scripts/pre-deploy` and `scripts/post-deploy` run on code changes
-6. **Sync** - Changes sync every 15s, dev server auto-restarts
+## Environment Variables
 
-## 2-Minute Quickstart
+### Required
 
-**Click "Deploy to DO" → Done!** The template deploys with a working Next.js sample app.
+| Variable | Description |
+|----------|-------------|
+| `GITHUB_REPO_URL` | Your application repository |
+| `DEV_START_COMMAND` | Startup command (or add `dev_startup.sh` to repo) |
 
-1. **Deploy** - Click the "Deploy to DO" button above
-2. **Wait** - Container builds (~2-3 min), then Next.js app starts automatically
-3. **Visit** - Open your app URL, see the sample app running
-4. **Inspect** - Check App Platform UI → Settings → Environment Variables to see:
-   - `GITHUB_REPO_URL` → Points to this monorepo
-   - `GITHUB_REPO_FOLDER` → `app-examples/nextjs-sample-app`
-   - `DEV_START_COMMAND` → `bash dev_startup.sh`
-   - Pre/post deploy hooks configured
+### Optional
 
-**That's it!** You now have a working hot-reload environment. Make changes to the Next.js sample, push to GitHub, and see them appear in ~15 seconds.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GITHUB_TOKEN` | - | For private repos (set as secret) |
+| `GITHUB_BRANCH` | main | Branch to sync |
+| `GITHUB_REPO_FOLDER` | - | Subfolder for monorepos |
+| `GITHUB_SYNC_INTERVAL` | 15 | Sync frequency (seconds) |
 
-### Use Your Own App
+### Deploy Jobs (Optional)
 
-To point the template at your own repository:
+Run commands when code changes are detected (on git commit change, not every sync):
 
-1. **App Platform UI** → Settings → Environment Variables
-2. Update:
-   - `GITHUB_REPO_URL` → Your repo URL
-   - `GITHUB_REPO_FOLDER` → Leave empty (or subfolder for monorepos)
-   - `DEV_START_COMMAND` → `bash dev_startup.sh` (or your command)
-3. **Build Arguments** → Enable only runtimes you need:
-   - Node.js? `INSTALL_NODE=true`, others=false
-   - Python? `INSTALL_PYTHON=true`, others=false
-   - Go? `INSTALL_GOLANG=true`, others=false
-4. **Redeploy** → Your app syncs and runs
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PRE_DEPLOY_COMMAND` | - | Runs before app starts (e.g., `bash scripts/migrate.sh`) |
+| `PRE_DEPLOY_TIMEOUT` | 300 | Timeout in seconds |
+| `POST_DEPLOY_COMMAND` | - | Runs after app starts (e.g., `bash scripts/seed.sh`) |
+| `POST_DEPLOY_TIMEOUT` | 300 | Timeout in seconds |
 
-## Configuration
+## Example Startup Scripts
 
-### Runtime Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `GITHUB_REPO_URL` | Yes* | Next.js sample | Your application repository URL |
-| `GITHUB_REPO_FOLDER` | No | `app-examples/nextjs-sample-app` | Subfolder within repo (for monorepos) |
-| `GITHUB_BRANCH` | No | `main` | Branch to sync |
-| `GITHUB_TOKEN` | No | - | GitHub token for private repos (stored as secret) |
-| `DEV_START_COMMAND` | No | `bash dev_startup.sh` | Command to start your dev server |
-| `WORKSPACE_PATH` | No | `/workspaces/app` | Where to sync your repo |
-| `GITHUB_SYNC_INTERVAL` | No | `15` | How often to sync repo (seconds) |
-| `ENABLE_DEV_HEALTH` | No | `false` | Bootstrap health server; set `true` if your app doesn't have health endpoint |
-
-\* Defaults to Next.js sample app for instant demo.
-
-### Build Arguments
-
-Choose runtimes you need (smaller selection = faster builds):
-
-| Build Arg | Default | When to Enable |
-|-----------|---------|----------------|
-| `INSTALL_NODE` | `true` | Node.js, Next.js, Remix, Express apps |
-| `INSTALL_PYTHON` | `false` | Python, FastAPI, Django, Flask apps |
-| `INSTALL_GOLANG` | `false` | Go apps |
-| `INSTALL_RUST` | `false` | Rust apps |
-| `INSTALL_RUBY` | `false` | Ruby, Rails, Sinatra apps |
-| `INSTALL_POSTGRES` | `true` | PostgreSQL client tools (psql, libpq) |
-| `INSTALL_MONGODB` | `false` | MongoDB client tools (mongosh) |
-| `INSTALL_MYSQL` | `false` | MySQL client tools (mysql cli) |
-
-## Write Your dev_startup.sh
-
-**Recommended:** Copy a proven example from `examples/` directory. These handle:
-- Automatic lock file conflict resolution (`package-lock.json`, `go.sum`, `uv.lock`)
-- Hard rebuild on dependency errors
-- Hot reload with file watching
-
-**Available examples:**
-- `examples/dev_startup.sh.nextjs` - Next.js with nodemon, handles npm peer deps
-- `examples/dev_startup.sh.python` - FastAPI with uv, handles lock conflicts
-- `examples/dev_startup.sh.golang` - Go with file watching, handles go.sum conflicts
-
-**Quick start:**
-1. Copy the appropriate example to your repo as `dev_startup.sh`
-2. Customize if needed (port, command, etc.)
-3. Script handles errors, conflicts, and hot reload automatically
-
-**Simple example (Next.js):**
+### Node.js / Next.js
 ```bash
 #!/bin/bash
-cd /workspaces/app
 npm install
-npm run dev -- --hostname 0.0.0.0 --port 8080
+npm run dev -- --host 0.0.0.0 --port 8080
 ```
 
-Your script should:
-- Install dependencies
-- Start a dev server on port `8080`
-- Support hot reload for fast iteration
-
-## Pre-Deploy and Post-Deploy Hooks
-
-Execute scripts at deployment lifecycle points. Jobs run **only when git commit changes** (not every 30s sync).
-
-### PRE_DEPLOY (Strict Mode)
-
-Runs **before** app starts. Must succeed or container exits.
-
-**Use for:** Database migrations, schema updates, environment validation
-
-**Configuration:**
-```yaml
-envs:
-  - key: PRE_DEPLOY_FOLDER
-    value: scripts/pre-deploy
-  - key: PRE_DEPLOY_COMMAND
-    value: bash migrate.sh
-  - key: PRE_DEPLOY_TIMEOUT
-    value: "300"  # seconds
-```
-
-### POST_DEPLOY (Lenient Mode)
-
-Runs **after** app starts (background). Failure logged but app continues.
-
-**Use for:** Data seeding, cache warming, notifications
-
-**Configuration:**
-```yaml
-envs:
-  - key: POST_DEPLOY_FOLDER
-    value: scripts/post-deploy
-  - key: POST_DEPLOY_COMMAND
-    value: bash seed.sh
-  - key: POST_DEPLOY_TIMEOUT
-    value: "300"  # seconds
-```
-
-**When Jobs Execute:**
-- **Initial startup**: Always runs before/after app starts
-- **Continuous sync (every 15s)**: Commit changed → Execute jobs, Commit unchanged → Skip jobs
-
-See working examples in `app-examples/nextjs-sample-app/scripts/` with detailed READMEs.
-
-## Monorepo Support
-
-Deploy applications from monorepos by syncing specific subfolders.
-
-**Configuration:**
-```yaml
-envs:
-  - key: GITHUB_REPO_URL
-    value: https://github.com/myorg/monorepo
-  - key: GITHUB_REPO_FOLDER
-    value: apps/backend
-  - key: GITHUB_BRANCH
-    value: feature/new-api
-```
-
-**How it works:**
-1. Sync script clones full monorepo to `/tmp/monorepo-cache/`
-2. Only specified folder synced to `/workspaces/app`
-3. Your `dev_startup.sh` runs from within that folder
-4. Changes sync every 15 seconds by default
-
-## Working Examples
-
-Complete working sample applications in [`app-examples/`](app-examples/):
-
-- **`app-examples/go-sample-app/`** - Go application with hot-reload
-- **`app-examples/python-fastapi-sample/`** - Python FastAPI application with hot-reload
-- **`app-examples/nextjs-sample-app/`** - Next.js application with hot-reload (default)
-- **`app-examples/ruby-rails-sample/`** - Rails application with hot-reload
-
-Each example includes:
-- Complete `dev_startup.sh` script
-- `appspec.yaml` configured for **testing/hot-reload** environment
-- Working application code
-- Pre/post deploy hook examples
-
-**Important:** The `appspec.yaml` in these examples is for **testing/hot-reload**. For **production**, create a separate `appspec.yaml` that uses buildpack or your own Dockerfile (not the hot-reload `Dockerfile` from this template).
-
-## Key Behaviors
-
-- **Git sync is continuous** - Your app is NOT auto-restarted. Use a dev server with hot reload (see examples above).
-- **Health server is temporary** - Disable via `ENABLE_DEV_HEALTH=false` once your app handles health checks.
-- **Runtimes are modular** - Enable only what you need for faster builds and smaller images.
-- **Environment variables are runtime** - Changes to env vars take effect on redeploy (no rebuild needed).
-- **Build arguments are build-time** - Changes to build args require a full rebuild.
-- **Lock file conflicts auto-resolved** - The sync script and example dev_startup.sh scripts automatically detect and resolve merge conflicts in lock files.
-- **Hard rebuild on errors** - Example scripts automatically perform clean rebuilds when dependency installation fails.
-
-## Deploy Options
-
-**One-click (recommended):**
-Use the "Deploy to DO" button and configure via UI after first deploy
-
-**App Platform UI:**
-Create App → GitHub → select this repo → configure env vars/build args → deploy
-
-**CLI (advanced):**
-Edit `app.yaml` with your values, then: `doctl apps create --spec app.yaml`
-
-**Local smoke test:**
+### Python / FastAPI
 ```bash
-docker build -t dev-env .
-docker run -p 8080:8080 \
-  -e GITHUB_REPO_URL=https://github.com/user/your-repo.git \
-  -e DEV_START_COMMAND="bash dev_startup.sh" \
-  dev-env
+#!/bin/bash
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+```
+
+### Go
+```bash
+#!/bin/bash
+go mod tidy
+go run .
+```
+
+## Important Notes
+
+- **Port 8080**: Your app must listen on port 8080, bound to `0.0.0.0`
+- **Hot reload**: Use a dev server that supports it (`npm run dev`, `uvicorn --reload`, etc.)
+- **Health check**: Container responds to `/health` on port 8080 until your app starts
+- **No rebuild needed**: Change env vars and redeploy - your code syncs automatically
+
+## Build Your Own Image
+
+Don't see your runtime combo? Build your own:
+
+```bash
+# Clone this repo
+git clone https://github.com/bikramkgupta/do-app-hot-reload-template
+
+# Build with your runtimes
+docker build \
+  --build-arg INSTALL_NODE=true \
+  --build-arg INSTALL_PYTHON=true \
+  -t my-custom-hot-reload .
+
+# Push to your registry
+docker tag my-custom-hot-reload ghcr.io/you/hot-reload-custom
+docker push ghcr.io/you/hot-reload-custom
 ```
 
 ## Troubleshooting
 
-- **Nothing starts:** Confirm `GITHUB_REPO_URL` is set and accessible, `dev_startup.sh` exists in your repo
-- **Health check fails:** Either keep `ENABLE_DEV_HEALTH=true` OR point health checks to your app and set `ENABLE_DEV_HEALTH=false`
-- **Health check port validation error:** If you see "health check port not found in internal_ports", either add the port to `internal_ports` or remove `internal_ports` and use `http_port` for health checks. See [CUSTOMIZATION.md](CUSTOMIZATION.md#health-check-configuration).
-- **Changes not visible:** Ensure your dev server supports hot reload (npm run dev, uvicorn --reload, air), or manually restart container
-- **Build takes too long:** Disable unused runtimes in build arguments
-- **npm peer dependency errors:** Use the Next.js example script which automatically creates `.npmrc` with `legacy-peer-deps=true`
-- **Lock file merge conflicts:** The sync script and example dev_startup.sh scripts automatically resolve these. If issues persist, manually delete the lock file and let it regenerate.
-- **Dependency installation fails:** Example scripts automatically perform hard rebuilds (clean reinstall) when errors are detected. Check logs for details.
+| Issue | Solution |
+|-------|----------|
+| App doesn't start | Check `GITHUB_REPO_URL` is set, `dev_startup.sh` exists |
+| Health check fails | Ensure app listens on port 8080 |
+| Changes not visible | Use a dev server with hot reload |
+| Private repo access | Set `GITHUB_TOKEN` as a secret |
 
-## Advanced Customization
+## Files in This Repo
 
-For deeper tweaks (new runtimes, custom health/sync logic): see [`CUSTOMIZATION.md`](CUSTOMIZATION.md)
+```
+├── Dockerfile              # Multi-stage build for all runtimes
+├── app.yaml               # Default app spec (Node.js)
+├── app-specs/             # App specs for each runtime
+│   ├── app-node.yaml
+│   ├── app-python.yaml
+│   ├── app-go.yaml
+│   └── app-full.yaml
+├── examples/              # Startup script examples
+│   ├── dev_startup_nextjs.sh
+│   ├── dev_startup_python.sh
+│   ├── dev_startup_go.sh
+│   └── dev_startup_rails.sh
+├── scripts/
+│   ├── startup.sh         # Container entrypoint
+│   ├── github-sync.sh     # Continuous sync daemon
+│   └── welcome-page-server/  # Welcome page + health endpoint
+└── .github/workflows/
+    └── build-and-push-images.yml  # Builds images to GHCR
+```
 
-For automation guidance: see [`AGENT.md`](agent.md)
+## Contributing
+
+1. Fork this repo
+2. Make changes
+3. Submit PR
+
+To request a new runtime combination, open an issue.
 
 ---
 
-**Docs map:** `README.md` = use the template, `CUSTOMIZATION.md` = change the template, `AGENT.md` = checklist for automating it.
+**Questions?** Open an issue or check [agent.md](agent.md) for the AI assistant deployment guide.

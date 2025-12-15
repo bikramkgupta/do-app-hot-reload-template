@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -9,6 +10,13 @@ import (
 	"strconv"
 	"time"
 )
+
+// HealthResponse represents the JSON response for health endpoints
+type HealthResponse struct {
+	Status    string `json:"status"`
+	Service   string `json:"service"`
+	Timestamp string `json:"timestamp"`
+}
 
 // WelcomePageData holds data for the welcome page template
 type WelcomePageData struct {
@@ -61,6 +69,23 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
+// healthHandler handles requests to health check endpoints
+// This allows health checks on port 8080 before user's app starts
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	response := HealthResponse{
+		Status:    "ok",
+		Service:   "hot-reload-container",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding health response: %v", err)
+	}
+}
+
 func main() {
 	// Get port from environment variable, default to 8080
 	port := 8080
@@ -75,6 +100,9 @@ func main() {
 	// Create HTTP server
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", welcomeHandler)
+	// Health check endpoints - allows health checks on port 8080 before user's app starts
+	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/api/health", healthHandler)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf("0.0.0.0:%d", port),
@@ -87,6 +115,7 @@ func main() {
 	// Log server start
 	log.Printf("Welcome page server starting on port %d", port)
 	log.Printf("Welcome page: http://0.0.0.0:%d/", port)
+	log.Printf("Health endpoints: /health, /api/health")
 
 	// Start server
 	if err := server.ListenAndServe(); err != nil {
@@ -100,18 +129,14 @@ const welcomePageHTML = `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DigitalOcean App Platform Dev Template</title>
+    <title>Hot Reload Dev Environment</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
             color: #333;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0080ff 0%, #00d4aa 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -122,92 +147,70 @@ const welcomePageHTML = `<!DOCTYPE html>
             background: white;
             border-radius: 12px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 800px;
+            max-width: 700px;
             width: 100%;
             padding: 40px;
         }
-        h1 {
-            color: #667eea;
-            margin-bottom: 10px;
-            font-size: 2.5em;
-        }
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 1.1em;
-        }
+        h1 { color: #0080ff; margin-bottom: 10px; font-size: 2em; }
+        .subtitle { color: #666; margin-bottom: 25px; font-size: 1.1em; }
         .status {
             background: #f8f9fa;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #0080ff;
             padding: 15px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             border-radius: 4px;
         }
         .status-item {
-            margin: 8px 0;
+            margin: 6px 0;
             font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 0.9em;
+            font-size: 0.85em;
         }
-        .status-label {
+        .status-label { font-weight: 600; color: #555; }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
             font-weight: 600;
-            color: #555;
+            margin-left: 8px;
         }
-        .status-value {
-            color: {{if eq .RepoURL "not set"}}#dc3545{{else}}#28a745{{end}};
-        }
-        .section {
-            margin: 30px 0;
-        }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .section { margin: 25px 0; }
         .section h2 {
             color: #333;
-            margin-bottom: 15px;
-            font-size: 1.5em;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
+            margin-bottom: 12px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #0080ff;
+            padding-bottom: 8px;
         }
         .step {
             background: #f8f9fa;
             padding: 15px;
-            margin: 15px 0;
+            margin: 12px 0;
             border-radius: 8px;
-            border-left: 4px solid #667eea;
-        }
-        .step-number {
-            display: inline-block;
-            background: #667eea;
-            color: white;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            text-align: center;
-            line-height: 28px;
-            font-weight: bold;
-            margin-right: 10px;
+            border-left: 4px solid #0080ff;
         }
         .code-block {
             background: #2d2d2d;
             color: #f8f8f2;
-            padding: 15px;
+            padding: 12px;
             border-radius: 6px;
             overflow-x: auto;
-            margin: 10px 0;
+            margin: 8px 0;
             font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 0.9em;
+            font-size: 0.85em;
         }
-        .code-block code {
-            color: #f8f8f2;
-        }
-        .env-var {
-            color: #a6e22e;
-        }
-        .value {
-            color: #ae81ff;
-        }
-        .warning {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            margin: 15px 0;
+        .env-var { color: #a6e22e; }
+        .value { color: #ae81ff; }
+        .comment { color: #75715e; }
+        .hint { color: #888; font-style: italic; font-size: 0.85em; }
+        .info {
+            background: #e7f3ff;
+            border-left: 4px solid #0080ff;
+            padding: 12px;
+            margin: 12px 0;
             border-radius: 4px;
         }
         .success {
@@ -218,253 +221,96 @@ const welcomePageHTML = `<!DOCTYPE html>
             border-radius: 4px;
         }
         .footer {
-            margin-top: 40px;
-            padding-top: 20px;
+            margin-top: 30px;
+            padding-top: 15px;
             border-top: 1px solid #eee;
             text-align: center;
             color: #666;
-            font-size: 0.9em;
-        }
-        a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        .badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            font-weight: 600;
-            margin-left: 8px;
-        }
-        .badge-success {
-            background: #d4edda;
-            color: #155724;
-        }
-        .badge-warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-        .badge-danger {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .hint-text {
-            color: #888;
-            font-style: italic;
             font-size: 0.85em;
-            margin-left: 8px;
         }
-        .ai-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            margin: 30px 0;
-            border-radius: 8px;
-            border-left: 4px solid #fff;
-        }
-        .ai-section h2 {
-            color: white;
-            border-bottom: 2px solid rgba(255,255,255,0.3);
-            margin-bottom: 15px;
-        }
-        .ai-section p {
-            margin: 10px 0;
-        }
-        .ai-section a {
-            color: #fff;
-            text-decoration: underline;
-            font-weight: 600;
-        }
+        a { color: #0080ff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 DigitalOcean App Platform Dev Template</h1>
-        <p class="subtitle">Your development container is running! Connect your application to get started.</p>
+        <h1>Hot Reload Dev Environment</h1>
+        <p class="subtitle">Container deployed in ~1 minute. Now point it to your code.</p>
 
         <div class="status">
             <div class="status-item">
-                <span class="status-label">Repository URL:</span>
-                <span class="status-value">{{.RepoURL}}</span>
-                {{if eq .RepoURL "not set"}}<span class="badge badge-danger">Required</span>{{else}}<span class="badge badge-success">Configured</span>{{end}}
+                <span class="status-label">Repository:</span>
+                {{if eq .RepoURL "not set"}}<span style="color:#dc3545">not set</span><span class="badge badge-danger">Required</span>{{else}}<span style="color:#28a745">{{.RepoURL}}</span><span class="badge badge-success">OK</span>{{end}}
             </div>
             <div class="status-item">
-                <span class="status-label">Repository Folder:</span>
-                <span class="status-value">{{.RepoFolder}}</span>
-                {{if eq .RepoFolder "not set"}}<span class="hint-text">(leave blank for root folder)</span>{{end}}
+                <span class="status-label">Start Command:</span>
+                {{if eq .DevStartCommand "not set"}}<span style="color:#856404">not set</span><span class="badge badge-warning">Optional</span>{{else}}<span style="color:#28a745">{{.DevStartCommand}}</span><span class="badge badge-success">OK</span>{{end}}
             </div>
             <div class="status-item">
-                <span class="status-label">Branch:</span>
-                <span class="status-value">{{.RepoBranch}}</span>
-                {{if eq .RepoBranch "not set"}}<span class="hint-text">(leave blank for main branch)</span>{{end}}
-            </div>
-            <div class="status-item">
-                <span class="status-label">Dev Start Command:</span>
-                <span class="status-value">{{.DevStartCommand}}</span>
-                {{if eq .DevStartCommand "not set"}}<span class="badge badge-warning">Not Set</span>{{else}}<span class="badge badge-success">Configured</span>{{end}}
-            </div>
-            <div class="status-item">
-                <span class="status-label">Workspace Path:</span>
-                <span class="status-value">{{.WorkspacePath}}</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Sync Interval:</span>
-                <span class="status-value">{{.SyncInterval}}s</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Dev Health Server:</span>
-                <span class="status-value">{{.EnableDevHealth}}</span>
+                <span class="status-label">Sync:</span> every {{.SyncInterval}}s
             </div>
         </div>
 
         {{if eq .RepoURL "not set"}}
         <div class="section">
-            <h2>📋 Quick Start Guide</h2>
-            
-            <div class="step">
-                <span class="step-number">1</span>
-                <strong>Bulk Configuration (Recommended)</strong>
-                <p>The fastest way to configure your app is using the App Platform bulk editor with pre-configured .env.example files from app-examples folder:</p>
-                <ul style="margin: 10px 0 10px 20px;">
-                    <li><strong>Next.js apps:</strong> <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/blob/main/app-examples/nextjs-sample-app/.env.example" target="_blank">nextjs .env.example</a></li>
-                    <li><strong>Python FastAPI apps:</strong> <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/blob/main/app-examples/python-fastapi-sample/.env.example" target="_blank">python-fastapi .env.example</a></li>
-                    <li><strong>Go apps:</strong> <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/blob/main/app-examples/go-sample-app/.env.example" target="_blank">go .env.example</a></li>
-                </ul>
-                <p><strong>How to use:</strong></p>
-                <ol style="margin: 10px 0 10px 20px;">
-                    <li>Open the .env.example file for your framework</li>
-                    <li>Copy all contents</li>
-                    <li>In App Platform UI → Settings → click "Bulk Editor"</li>
-                    <li>Paste the contents and adjust GITHUB_REPO_URL to your repository</li>
-                </ol>
-                <p><strong>Advantage:</strong> Copy-paste all settings at once instead of adding them one by one.</p>
-                <p style="margin-top: 15px;"><strong>Or set variables individually:</strong></p>
-                <div class="code-block">
-                    <code><span class="env-var">GITHUB_REPO_URL</span> = <span class="value">https://github.com/your-username/your-repo.git</span><br>
-<span class="env-var">GITHUB_REPO_FOLDER</span> = <span class="value">subfolder/path</span> <span class="hint-text">(leave blank for root folder)</span><br>
-<span class="env-var">GITHUB_BRANCH</span> = <span class="value">main</span> <span class="hint-text">(leave blank for main branch)</span></code>
-                </div>
+            <h2>Setup (DO Console)</h2>
+            <p style="margin-bottom: 12px;">Set these 2 environment variables in App Platform Console:</p>
+            <div class="code-block">
+<span class="env-var">GITHUB_REPO_URL</span> = <span class="value">https://github.com/you/your-app</span>
+<span class="env-var">DEV_START_COMMAND</span> = <span class="value">bash dev_startup.sh</span>
+<span class="comment"># For private repos, also set GITHUB_TOKEN (as secret)</span>
             </div>
-
-            <div class="step">
-                <span class="step-number">2</span>
-                <strong>Configure Your Startup Command</strong>
-                <p><strong>Both are needed:</strong> Set DEV_START_COMMAND and create a dev_startup.sh in your repository</p>
-                <div class="code-block">
-                    <code><span class="env-var">DEV_START_COMMAND</span> = <span class="value">bash dev_startup.sh</span></code>
-                </div>
-                <p style="margin-top: 15px;"><strong>Why dev_startup.sh is better than a 1-liner DEV_START_COMMAND:</strong></p>
-                <ul style="margin: 10px 0 10px 20px;">
-                    <li>You control and version it in your repo (not locked in App Platform settings)</li>
-                    <li>Easier to update without redeploying the container</li>
-                    <li>Can include complex logic, error handling, and dependency management</li>
-                </ul>
-                <p style="margin-top: 10px;"><strong>Example dev_startup.sh for Next.js:</strong></p>
-                <div class="code-block">
-                    <code>#!/bin/bash<br>cd /workspaces/app<br>npm install<br>npm run dev -- --hostname 0.0.0.0 --port 8080</code>
-                </div>
-                <p style="margin-top: 10px;">See ready-made templates in <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/examples" target="_blank">examples</a>, and ask your AI assistant to tailor a dev_startup.sh for your specific codebase.</p>
-            </div>
-
-            <div class="step">
-                <span class="step-number">3</span>
-                <strong>Configure Build Arguments (Build-time)</strong>
-                <p>Go to App Platform UI → Settings → Build Arguments and enable only what you need:</p>
-                <p style="margin-top: 10px;"><em>Note: These are BUILD_TIME scope arguments that determine which language runtimes are installed during container build.</em></p>
-                <div class="code-block">
-                    <code><span class="env-var">INSTALL_NODE</span> = <span class="value">true</span>  # For Node.js/Next.js apps<br>
-<span class="env-var">INSTALL_PYTHON</span> = <span class="value">true</span>  # For Python/FastAPI apps<br>
-<span class="env-var">INSTALL_GOLANG</span> = <span class="value">true</span>  # For Go apps<br>
-<span class="env-var">INSTALL_RUST</span> = <span class="value">false</span>  # For Rust apps</code>
-                </div>
-            </div>
-
-            <div class="step">
-                <span class="step-number">4</span>
-                <strong>Redeploy Your App</strong>
-                <p>After setting environment variables, trigger a new deployment to apply changes.</p>
-            </div>
+            <p class="hint" style="margin-top: 8px;">That's all the container needs. Redeploy after setting these.</p>
         </div>
 
-        <div class="ai-section">
-            <h2>🤖 Automate Setup with AI Assistants</h2>
-            <p><strong>Skip manual configuration!</strong> AI assistants can automate the entire deployment process:</p>
-            <ul style="margin: 15px 0 15px 20px;">
-                <li>Automatically create and configure your app on App Platform</li>
-                <li>Set all required environment variables and build arguments</li>
-                <li>Generate dev_startup.sh scripts tailored to your application</li>
-                <li>Monitor deployment and troubleshoot issues</li>
-                <li>Execute commands in your running container for debugging</li>
-            </ul>
-            <p style="margin-top: 15px;"><strong>Supported AI assistants:</strong> Claude Code, GitHub Copilot, Cursor, Codex, Antigravity, or any agent that can execute commands</p>
-            <p><strong>Get started:</strong> See the <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/blob/main/agent.md" target="_blank">agent.md playbook</a> for detailed automation instructions.</p>
+        <div class="info">
+            <strong>Your app config goes in your .env file, not here.</strong>
+            <p style="margin-top: 6px;">DATABASE_URL, API_KEY, etc. → put in <code>.env</code> in your repo. Changes sync in 15 seconds without redeploy.</p>
         </div>
         {{else}}
         <div class="success">
-            <strong>✓ Repository Configured!</strong>
-            <p>Your repository is set to: <code>{{.RepoURL}}</code></p>
+            <strong>Connected!</strong> Code syncs every {{.SyncInterval}} seconds.
             {{if eq .DevStartCommand "not set"}}
-            <p style="margin-top: 10px;"><strong>Next:</strong> Set <code>DEV_START_COMMAND</code> or add a <code>dev_startup.sh</code> script to your repository.</p>
-            {{else}}
-            <p style="margin-top: 10px;"><strong>Next:</strong> Your app should start automatically. Check the logs if you don't see your application.</p>
+            <p style="margin-top: 8px;">Add <code>dev_startup.sh</code> to your repo or set <code>DEV_START_COMMAND</code>.</p>
             {{end}}
+        </div>
+
+        <div class="info">
+            <strong>App config belongs in your .env file</strong>
+            <p style="margin-top: 6px;">DATABASE_URL, API keys, etc. → <code>.env</code> in your repo. Push changes, they sync automatically. No redeploy needed.</p>
         </div>
         {{end}}
 
         <div class="section">
-            <h2>📚 Example dev_startup.sh Scripts</h2>
-            
-            <div class="step">
-                <strong>Next.js / React</strong>
-                <div class="code-block">
-                    <code>#!/bin/bash<br>cd /workspaces/app<br>npm install<br>npm run dev -- --hostname 0.0.0.0 --port 8080</code>
-                </div>
-                <p style="margin-top: 8px;">Starting point only—use your AI assistant to generate a dev_startup.sh tailored to your project, or copy from the <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/examples" target="_blank">examples directory</a>.</p>
-            </div>
+            <h2>Example dev_startup.sh</h2>
+            <div class="code-block">
+<span class="comment">#!/bin/bash</span>
+<span class="comment"># Load your app config from .env</span>
+<span class="env-var">if</span> [ -f .env ]; <span class="env-var">then</span>
+    <span class="env-var">export</span> $(cat .env | grep -v '^#' | xargs)
+<span class="env-var">fi</span>
 
-            <div class="step">
-                <strong>Python FastAPI</strong>
-                <div class="code-block">
-                    <code>#!/bin/bash<br>cd /workspaces/app<br>uv sync --no-dev<br>uv run uvicorn main:app --host 0.0.0.0 --port 8080 --reload</code>
-                </div>
-                <p style="margin-top: 8px;">Adapt with your AI assistant or reuse the <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/examples" target="_blank">examples/dev_startup.sh.python</a> template.</p>
+npm install
+npm run dev -- --host 0.0.0.0 --port 8080
             </div>
-
-            <div class="step">
-                <strong>Go</strong>
-                <div class="code-block">
-                    <code>#!/bin/bash<br>cd /workspaces/app<br>go mod tidy<br>go run main.go</code>
-                </div>
-                <p style="margin-top: 8px;">Have your AI assistant extend this for your modules, or copy from <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow/tree/main/examples" target="_blank">examples/dev_startup.sh.golang</a> and adjust.</p>
-            </div>
+            <p class="hint">Your .env file: DATABASE_URL, API_KEY, etc. Git push → syncs in 15s.</p>
         </div>
 
         <div class="section">
-            <h2>🔧 Important Notes</h2>
-            
-            <div class="warning">
-                <strong>⚠️ Your app must listen on port 8080</strong>
-                <p>Make sure your development server binds to <code>0.0.0.0:8080</code> (not <code>localhost</code> or <code>127.0.0.1</code>).</p>
+            <h2>The Philosophy</h2>
+            <div class="step">
+                <strong>Container config (DO Console):</strong> Where's your code? How to start it?
+                <div class="code-block" style="margin-top:8px">GITHUB_REPO_URL, DEV_START_COMMAND</div>
             </div>
-
-            <div class="warning">
-                <strong>🔄 Hot Reload is Automatic</strong>
-                <p>Your repository syncs every {{.SyncInterval}} seconds (configurable via GITHUB_SYNC_INTERVAL environment variable, default is 15s). Use a dev server with hot reload (like <code>npm run dev</code>, <code>uvicorn --reload</code>, or <code>air</code>) to see changes without restarting.</p>
+            <div class="step">
+                <strong>App config (your .env file):</strong> Everything else
+                <div class="code-block" style="margin-top:8px">DATABASE_URL, API_KEY, STRIPE_SECRET, etc.</div>
             </div>
-
-            <div class="warning">
-                <strong>🏥 Health Check</strong>
-                <p>The built-in health server runs on port 9090 at <code>/dev_health</code>. Once your app has its own health endpoint, set <code>ENABLE_DEV_HEALTH=false</code> and point health checks to your app.</p>
-            </div>
+            <p class="hint" style="margin-top: 12px;">Change .env → git push → syncs in 15 seconds. No DO redeploy needed!</p>
         </div>
 
         <div class="footer">
-            <p>Container started at: {{.Timestamp}}</p>
-            <p>For more information, see the <a href="https://github.com/bikram20/do-app-platform-ai-dev-workflow" target="_blank">template repository</a></p>
+            <p>Container started: {{.Timestamp}} | Health: <code>/health</code> port 8080</p>
         </div>
     </div>
 </body>
