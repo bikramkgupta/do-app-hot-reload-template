@@ -31,6 +31,8 @@ ARG INSTALL_NODE=false
 ARG NODE_VERSIONS="24 22"
 ARG NODE_DEFAULT_VERSION=24
 
+ARG INSTALL_BUN=false
+
 ARG INSTALL_PYTHON=false
 ARG PYTHON_VERSIONS="3.12 3.13"
 ARG PYTHON_DEFAULT_VERSION=3.13
@@ -97,6 +99,17 @@ RUN if [ "$INSTALL_NODE" = "true" ]; then \
 
 # Set Node environment variables globally
 ENV NVM_DIR=/root/.nvm
+
+# =============================================================================
+# Install Bun (if enabled)
+# =============================================================================
+RUN if [ "$INSTALL_BUN" = "true" ]; then \
+        curl -fsSL https://bun.sh/install | bash; \
+    fi
+
+# Set Bun environment variables
+ENV BUN_INSTALL=/root/.bun
+ENV PATH=$BUN_INSTALL/bin:$PATH
 
 # =============================================================================
 # Install Python via UV (if enabled)
@@ -236,6 +249,11 @@ RUN if [ "$INSTALL_RUST" = "true" ]; then \
         && chown -R devcontainer:devcontainer /home/devcontainer/.cargo /home/devcontainer/.rustup; \
     fi
 
+RUN if [ "$INSTALL_BUN" = "true" ]; then \
+        cp -r /root/.bun /home/devcontainer/.bun \
+        && chown -R devcontainer:devcontainer /home/devcontainer/.bun; \
+    fi
+
 # Switch to devcontainer user
 USER devcontainer
 WORKDIR /workspaces/app
@@ -248,6 +266,12 @@ RUN if [ "$INSTALL_NODE" = "true" ]; then \
         echo 'export NVM_DIR="$HOME/.nvm"' >> /home/devcontainer/.bashrc \
         && echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> /home/devcontainer/.bashrc \
         && echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"' >> /home/devcontainer/.bashrc; \
+    fi
+
+# Bun
+RUN if [ "$INSTALL_BUN" = "true" ]; then \
+        echo 'export BUN_INSTALL="$HOME/.bun"' >> /home/devcontainer/.bashrc \
+        && echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> /home/devcontainer/.bashrc; \
     fi
 
 # Python (UV)
@@ -287,8 +311,9 @@ RUN echo 'source <(doctl completion bash)' >> /home/devcontainer/.bashrc
 
 # Update devcontainer user's environment variables
 ENV NVM_DIR=/home/devcontainer/.nvm
+ENV BUN_INSTALL=/home/devcontainer/.bun
 ENV RBENV_ROOT=/home/devcontainer/.rbenv
-ENV PATH=/home/devcontainer/.rbenv/shims:/home/devcontainer/.rbenv/bin:/home/devcontainer/.local/bin:/usr/local/go/bin:/home/devcontainer/.cargo/bin:$PATH
+ENV PATH=/home/devcontainer/.bun/bin:/home/devcontainer/.rbenv/shims:/home/devcontainer/.rbenv/bin:/home/devcontainer/.local/bin:/usr/local/go/bin:/home/devcontainer/.cargo/bin:$PATH
 
 # =============================================================================
 # Add GitHub sync and health check scripts

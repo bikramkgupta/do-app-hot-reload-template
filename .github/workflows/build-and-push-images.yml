@@ -28,6 +28,15 @@ jobs:
           # Node.js only
           - variant: node
             install_node: "true"
+            install_bun: "false"
+            install_python: "false"
+            install_golang: "false"
+            install_rust: "false"
+            install_ruby: "false"
+          # Bun only
+          - variant: bun
+            install_node: "false"
+            install_bun: "true"
             install_python: "false"
             install_golang: "false"
             install_rust: "false"
@@ -35,6 +44,7 @@ jobs:
           # Python only
           - variant: python
             install_node: "false"
+            install_bun: "false"
             install_python: "true"
             install_golang: "false"
             install_rust: "false"
@@ -42,6 +52,7 @@ jobs:
           # Go only
           - variant: go
             install_node: "false"
+            install_bun: "false"
             install_python: "false"
             install_golang: "true"
             install_rust: "false"
@@ -49,6 +60,7 @@ jobs:
           # Ruby only
           - variant: ruby
             install_node: "false"
+            install_bun: "false"
             install_python: "false"
             install_golang: "false"
             install_rust: "false"
@@ -56,6 +68,7 @@ jobs:
           # Node + Python (common combo for full-stack)
           - variant: node-python
             install_node: "true"
+            install_bun: "false"
             install_python: "true"
             install_golang: "false"
             install_rust: "false"
@@ -63,6 +76,7 @@ jobs:
           # Full (all runtimes except Ruby by default)
           - variant: full
             install_node: "true"
+            install_bun: "false"
             install_python: "true"
             install_golang: "true"
             install_rust: "false"
@@ -108,6 +122,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             INSTALL_NODE=${{ matrix.install_node }}
+            INSTALL_BUN=${{ matrix.install_bun }}
             INSTALL_PYTHON=${{ matrix.install_python }}
             INSTALL_GOLANG=${{ matrix.install_golang }}
             INSTALL_RUST=${{ matrix.install_rust }}
@@ -129,6 +144,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Runtimes installed:**" >> $GITHUB_STEP_SUMMARY
           echo "- Node.js: ${{ matrix.install_node }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Bun: ${{ matrix.install_bun }}" >> $GITHUB_STEP_SUMMARY
           echo "- Python: ${{ matrix.install_python }}" >> $GITHUB_STEP_SUMMARY
           echo "- Go: ${{ matrix.install_golang }}" >> $GITHUB_STEP_SUMMARY
           echo "- Rust: ${{ matrix.install_rust }}" >> $GITHUB_STEP_SUMMARY
@@ -150,6 +166,7 @@ jobs:
           echo "| Image | Runtimes | Use Case |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|----------|----------|" >> $GITHUB_STEP_SUMMARY
           echo "| \`ghcr.io/${{ github.repository_owner }}/hot-reload-node\` | Node.js 22/24 | Next.js, React, Express |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`ghcr.io/${{ github.repository_owner }}/hot-reload-bun\` | Bun (latest) | Bun apps, fast bundling |" >> $GITHUB_STEP_SUMMARY
           echo "| \`ghcr.io/${{ github.repository_owner }}/hot-reload-python\` | Python 3.12/3.13 | FastAPI, Django, Flask |" >> $GITHUB_STEP_SUMMARY
           echo "| \`ghcr.io/${{ github.repository_owner }}/hot-reload-go\` | Go 1.23 | Go APIs, CLI tools |" >> $GITHUB_STEP_SUMMARY
           echo "| \`ghcr.io/${{ github.repository_owner }}/hot-reload-ruby\` | Ruby 3.4/3.3 | Rails, Sinatra, Hanami |" >> $GITHUB_STEP_SUMMARY
