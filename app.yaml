@@ -35,21 +35,27 @@ services:
       tag: latest
 
     instance_count: 1
-    instance_size_slug: apps-s-1vcpu-1gb
+    instance_size_slug: apps-s-1vcpu-2gb
 
     # Application port
     http_port: 8080
 
-    # Health check on port 8080
-    # Welcome-page-server responds to /health until your app starts
+    # Internal port for dev-health-server (keeps container alive for debugging)
+    internal_ports:
+      - 9090
+
+    # CRITICAL: Health check on port 9090, NOT 8080
+    # This ensures you can always shell into the container even if your app crashes.
+    # The dev-health-server on port 9090 stays running regardless of app state.
+    # DO NOT change this to port 8080 - you'll lose shell access when things break!
     health_check:
-      http_path: /health
+      http_path: /dev_health
       initial_delay_seconds: 10
       period_seconds: 10
       timeout_seconds: 5
       success_threshold: 1
       failure_threshold: 3
-      port: 8080
+      port: 9090
 
     envs:
       # === Your Application Repository ===

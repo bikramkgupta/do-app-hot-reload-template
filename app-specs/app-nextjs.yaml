@@ -1,12 +1,19 @@
 #
 # DigitalOcean App Platform - Hot Reload Dev Environment
-# Pre-built Go Image (Deploys in ~1 minute!)
+# Next.js Application Template (Deploys in ~1 minute!)
 #
 # Usage:
-#   doctl apps create --spec app-specs/app-go.yaml
+#   1. Copy this file to your repo as .do/app-hot-reload.yaml
+#   2. Update GITHUB_REPO_URL with your repository
+#   3. Add dev_startup.sh to your repo (see examples/)
+#   4. Deploy: doctl apps create --spec .do/app-hot-reload.yaml
+#
+# Prerequisites:
+#   - Add dev_startup.sh to your repo root (copy from examples/dev_startup_nextjs.sh)
+#   - For private repos: substitute your GITHUB_TOKEN before deploying
 #
 
-name: hot-reload-dev
+name: my-nextjs-app
 region: syd1
 
 services:
@@ -14,7 +21,7 @@ services:
     image:
       registry_type: GHCR
       registry: bikramkgupta
-      repository: hot-reload-go
+      repository: hot-reload-node
       tag: latest
 
     instance_count: 1
@@ -25,7 +32,8 @@ services:
     internal_ports:
       - 9090
 
-    # CRITICAL: Health check on port 9090 for shell access when app crashes
+    # CRITICAL: Health check on port 9090, NOT 8080
+    # This ensures shell access even if your app crashes.
     health_check:
       http_path: /dev_health
       initial_delay_seconds: 10
@@ -36,26 +44,29 @@ services:
       port: 9090
 
     envs:
+      # === Your Repository ===
       - key: GITHUB_REPO_URL
-        value: ""
+        value: "https://github.com/YOUR_USERNAME/YOUR_REPO"
         scope: RUN_TIME
+
+      # For private repos, add your token here (or use envsubst)
       - key: GITHUB_TOKEN
         value: ""
         scope: RUN_TIME
         type: SECRET
+
+      # Branch to sync (leave empty for main/master)
       - key: GITHUB_BRANCH
         value: ""
         scope: RUN_TIME
-      - key: GITHUB_REPO_FOLDER
-        value: ""
-        scope: RUN_TIME
-      # Go examples:
-      #   - "go run ."
-      #   - "air" (for hot reload with air)
-      #   - "bash dev_startup.sh"
+
+      # === Startup Command ===
+      # Uses dev_startup.sh which handles npm install automatically
       - key: DEV_START_COMMAND
-        value: ""
+        value: "bash dev_startup.sh"
         scope: RUN_TIME
+
+      # === Sync Settings ===
       - key: GITHUB_SYNC_INTERVAL
         value: "15"
         scope: RUN_TIME
@@ -63,19 +74,11 @@ services:
         value: "/workspaces/app"
         scope: RUN_TIME
 
-      # === Deploy Jobs (Optional) ===
-      # Commands run on git commit change (e.g., "go generate ./...")
+      # === Deploy Jobs ===
+      # Leave PRE_DEPLOY empty - use dev_startup.sh for npm install
+      # PRE_DEPLOY runs in strict mode and kills container on failure
       - key: PRE_DEPLOY_COMMAND
         value: ""
-        scope: RUN_TIME
-      - key: PRE_DEPLOY_TIMEOUT
-        value: "300"
-        scope: RUN_TIME
-      - key: POST_DEPLOY_COMMAND
-        value: ""
-        scope: RUN_TIME
-      - key: POST_DEPLOY_TIMEOUT
-        value: "300"
         scope: RUN_TIME
 
 alerts:
