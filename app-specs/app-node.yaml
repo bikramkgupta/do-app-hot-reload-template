@@ -3,15 +3,13 @@
 # Pre-built Node.js Image (Deploys in ~1 minute!)
 #
 # Usage:
-#   doctl apps create --spec app-specs/app-node.yaml
+#   doctl apps create --spec .do/app-hot-reload.yaml
 #
-# After deployment, configure your app in the DO Console:
-#   - Set GITHUB_REPO_URL to your repository
-#   - Set GITHUB_TOKEN if private repo (as secret)
-#   - Set DEV_START_COMMAND or add dev_startup.sh to your repo
+# This configuration is for the sea-notes-saas-starter-kit application
+# configured to use the hot-reload-dev branch with monorepo structure
 #
 
-name: hot-reload-dev
+name: sea-notes-hot-reload-dev-2
 region: syd1
 
 services:
@@ -25,54 +23,64 @@ services:
       tag: latest
 
     instance_count: 1
-    instance_size_slug: apps-s-1vcpu-1gb
+    # Use 2GB instance for faster npm install (this app has many dependencies)
+    instance_size_slug: apps-s-1vcpu-2gb
 
-    # Application port
+    # Application port (public HTTP traffic)
     http_port: 8080
+    
+    # Internal port for dev-health-server (used for health checks)
+    internal_ports:
+      - 9090
 
-    # Health check on port 8080 (welcome-page-server responds until your app starts)
+    # Health check configuration
+    # Use the dev-health-server on port 9090 which stays running throughout
+    # npm install and app startup. This ensures container health during the
+    # potentially long npm install phase (puppeteer downloads Chromium).
     health_check:
-      http_path: /health
+      # Use the persistent dev-health-server endpoint (stays running always)
+      http_path: /dev_health
       initial_delay_seconds: 10
       period_seconds: 10
       timeout_seconds: 5
       success_threshold: 1
       failure_threshold: 3
-      port: 8080
+      # Use port 9090 where dev-health-server runs (not 8080)
+      port: 9090
 
     envs:
       # === Your Application Repository ===
-      # Set this to your GitHub repository URL
+      # Repository URL for sea-notes-saas-starter-kit
       - key: GITHUB_REPO_URL
-        value: ""
+        value: "https://github.com/bikramkgupta/sea-notes-saas-starter-kit"
         scope: RUN_TIME
 
       # For private repos, set your GitHub token (Personal Access Token with repo scope)
+      # Leave empty for public repos
       - key: GITHUB_TOKEN
         value: ""
         scope: RUN_TIME
         type: SECRET
 
-      # Branch to sync (leave empty for main/master)
+      # Branch to sync - using hot-reload-dev branch
       - key: GITHUB_BRANCH
-        value: ""
+        value: "hot-reload-dev"
         scope: RUN_TIME
 
-      # For monorepos: specify subfolder (e.g., "apps/frontend")
+      # For monorepos: specify subfolder containing the application
+      # The application code is in the "application" subdirectory
       - key: GITHUB_REPO_FOLDER
-        value: ""
+        value: "application"
         scope: RUN_TIME
 
       # === Application Startup ===
-      # Command to start your app (or add dev_startup.sh to your repo)
-      # Examples:
-      #   - "npm run dev -- --hostname 0.0.0.0 --port 8080"
-      #   - "bash dev_startup.sh"
+      # Command to start your app - uses dev_startup.sh from the application directory
       - key: DEV_START_COMMAND
-        value: ""
+        value: "bash dev_startup.sh"
         scope: RUN_TIME
 
       # === Sync Settings ===
+      # How often to sync from GitHub (seconds)
       - key: GITHUB_SYNC_INTERVAL
         value: "15"
         scope: RUN_TIME
@@ -83,6 +91,7 @@ services:
 
       # === Deploy Jobs (Optional) ===
       # Commands run on git commit change (e.g., "npm run db:migrate")
+      # Leave empty for now - will configure later when database is added
       - key: PRE_DEPLOY_COMMAND
         value: ""
         scope: RUN_TIME
@@ -95,6 +104,14 @@ services:
       - key: POST_DEPLOY_TIMEOUT
         value: "300"
         scope: RUN_TIME
+
+      # === Application Environment Variables ===
+      # Note: Database and other integrations will be configured later
+      # For now, we'll let the app run without database connection
+      # You can add these via DO Console after initial deployment:
+      #   - AUTH_SECRET (required for NextAuth)
+      #   - DATABASE_URL (will be configured after database setup)
+      #   - Other variables as needed
 
 alerts:
   - rule: DEPLOYMENT_FAILED
