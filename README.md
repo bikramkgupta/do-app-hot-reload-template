@@ -199,9 +199,14 @@ Plain-text variables defined directly in `.do/config.yaml`:
 
 ```yaml
 envs:
+  # Simple format (defaults to RUN_TIME scope)
   NODE_ENV: development
   LOG_LEVEL: debug
-  PUBLIC_API_URL: https://api.example.com
+
+  # Extended format with scope
+  NPM_CONFIG_LEGACY_PEER_DEPS:
+    value: "true"
+    scope: BUILD_TIME
 ```
 
 ### Secrets (type: SECRET)
@@ -214,10 +219,22 @@ Encrypted variables. Add to GitHub Secrets, then list in config:
 
 ```yaml
 secrets:
+  # Simple format (defaults to RUN_TIME scope)
   - DATABASE_URL
   - AUTH_SECRET
-  - STRIPE_SECRET_KEY
+
+  # Extended format with scope
+  - name: NPM_TOKEN
+    scope: BUILD_TIME
 ```
+
+### Scope Options
+
+| Scope | When Available | Use Case |
+|-------|----------------|----------|
+| `RUN_TIME` (default) | Only at run-time | Database URLs, API keys, secrets |
+| `BUILD_TIME` | Only at build-time | NPM tokens, build-time configs |
+| `RUN_AND_BUILD_TIME` | Both build and run | Shared configs like SENTRY_DSN |
 
 The workflow reads your lists and generates the app spec dynamically. You can have any number of envs and secrets.
 
@@ -260,15 +277,18 @@ dev_start_command: bash dev_startup.sh
 pre_deploy_command: ""
 post_deploy_command: ""
 
-# Plain-text environment variables
+# Plain-text environment variables (scope: RUN_TIME, BUILD_TIME, or RUN_AND_BUILD_TIME)
 envs:
-  NODE_ENV: development
-  LOG_LEVEL: debug
+  NODE_ENV: development        # Simple format (defaults to RUN_TIME)
+  NPM_CONFIG_LEGACY_PEER_DEPS: # Extended format with scope
+    value: "true"
+    scope: BUILD_TIME
 
 # Secrets (values from GitHub Secrets)
 secrets:
-  - DATABASE_URL
-  - AUTH_SECRET
+  - DATABASE_URL               # Simple format (defaults to RUN_TIME)
+  - name: NPM_TOKEN            # Extended format with scope
+    scope: BUILD_TIME
 
 # Advanced: Use your own app spec instead
 # app_spec_path: .do/my-custom-app.yaml

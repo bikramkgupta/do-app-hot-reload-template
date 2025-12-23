@@ -339,33 +339,57 @@ jobs:
             echo "Processing environment variables..."
             ENV_COUNT=$(yq '.envs | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
             if [ "$ENV_COUNT" != "0" ] && [ "$ENV_COUNT" != "null" ]; then
-              yq '.envs | to_entries | .[]' "$CONFIG_FILE" 2>/dev/null | while read -r line; do
-                KEY=$(echo "$line" | yq '.key')
-                VALUE=$(echo "$line" | yq '.value')
+              # Process each env entry - supports both simple (KEY: value) and extended (KEY: {value, scope}) formats
+              for KEY in $(yq '.envs | keys | .[]' "$CONFIG_FILE" 2>/dev/null); do
                 if [ -n "$KEY" ] && [ "$KEY" != "null" ]; then
-                  echo "  Adding env: $KEY"
+                  # Check if value is a string (simple) or object (extended)
+                  VALUE_TYPE=$(yq ".envs[\"$KEY\"] | type" "$CONFIG_FILE" 2>/dev/null)
+                  if [ "$VALUE_TYPE" = "!!map" ]; then
+                    # Extended format: { value: "val", scope: BUILD_TIME }
+                    VALUE=$(yq ".envs[\"$KEY\"].value" "$CONFIG_FILE" 2>/dev/null)
+                    SCOPE=$(yq ".envs[\"$KEY\"].scope // \"RUN_TIME\"" "$CONFIG_FILE" 2>/dev/null)
+                  else
+                    # Simple format: KEY: value (defaults to RUN_TIME)
+                    VALUE=$(yq ".envs[\"$KEY\"]" "$CONFIG_FILE" 2>/dev/null)
+                    SCOPE="RUN_TIME"
+                  fi
+                  echo "  Adding env: $KEY (scope: $SCOPE)"
                   cat >> .do/app-generated.yaml << ENV_ENTRY
                 - key: $KEY
                   value: "$VALUE"
-                  scope: RUN_TIME
+                  scope: $SCOPE
           ENV_ENTRY
                 fi
               done
             fi
 
             # Add secrets from config.yaml (type: SECRET)
+            # Supports both simple (- SECRET_NAME) and extended (- {name: SECRET_NAME, scope: BUILD_TIME}) formats
             echo "Processing secrets..."
-            yq '.secrets[]' "$CONFIG_FILE" 2>/dev/null | while read -r SECRET_NAME; do
-              if [ -n "$SECRET_NAME" ] && [ "$SECRET_NAME" != "null" ]; then
-                echo "  Adding secret: $SECRET_NAME"
-                cat >> .do/app-generated.yaml << SECRET_ENTRY
+            SECRET_COUNT=$(yq '.secrets | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
+            if [ "$SECRET_COUNT" != "0" ] && [ "$SECRET_COUNT" != "null" ]; then
+              for i in $(seq 0 $((SECRET_COUNT - 1))); do
+                SECRET_TYPE=$(yq ".secrets[$i] | type" "$CONFIG_FILE" 2>/dev/null)
+                if [ "$SECRET_TYPE" = "!!map" ]; then
+                  # Extended format: { name: SECRET_NAME, scope: BUILD_TIME }
+                  SECRET_NAME=$(yq ".secrets[$i].name" "$CONFIG_FILE" 2>/dev/null)
+                  SCOPE=$(yq ".secrets[$i].scope // \"RUN_TIME\"" "$CONFIG_FILE" 2>/dev/null)
+                else
+                  # Simple format: - SECRET_NAME (defaults to RUN_TIME)
+                  SECRET_NAME=$(yq ".secrets[$i]" "$CONFIG_FILE" 2>/dev/null)
+                  SCOPE="RUN_TIME"
+                fi
+                if [ -n "$SECRET_NAME" ] && [ "$SECRET_NAME" != "null" ]; then
+                  echo "  Adding secret: $SECRET_NAME (scope: $SCOPE)"
+                  cat >> .do/app-generated.yaml << SECRET_ENTRY
                 - key: $SECRET_NAME
                   value: "\${$SECRET_NAME}"
-                  scope: RUN_TIME
+                  scope: $SCOPE
                   type: SECRET
           SECRET_ENTRY
-              fi
-            done
+                fi
+              done
+            fi
           fi
 
           # Close the spec

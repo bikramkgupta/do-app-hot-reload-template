@@ -45,15 +45,19 @@ pre_deploy_command: ""
 post_deploy_command: ""
 
 # Plain-text env vars (type: GENERAL)
+# Scope: RUN_TIME (default), BUILD_TIME, or RUN_AND_BUILD_TIME
 envs:
-  NODE_ENV: development
-  LOG_LEVEL: debug
+  NODE_ENV: development          # Simple format (defaults to RUN_TIME)
+  NPM_CONFIG_LEGACY_PEER_DEPS:   # Extended format with scope
+    value: "true"
+    scope: BUILD_TIME
 
 # Encrypted secrets (type: SECRET) - values from GitHub Secrets
+# Scope: RUN_TIME (default), BUILD_TIME, or RUN_AND_BUILD_TIME
 secrets:
-  - DATABASE_URL
-  - AUTH_SECRET
-  - STRIPE_SECRET_KEY
+  - DATABASE_URL                 # Simple format (defaults to RUN_TIME)
+  - name: NPM_TOKEN              # Extended format with scope
+    scope: BUILD_TIME
 
 # Advanced: Use your own app spec for complex deployments
 # app_spec_path: .do/my-custom-app.yaml
@@ -157,21 +161,30 @@ The workflow dynamically generates env vars from `.do/config.yaml`:
 ### Plain-text (type: GENERAL)
 ```yaml
 envs:
-  NODE_ENV: development
-  LOG_LEVEL: debug
+  NODE_ENV: development     # Simple (defaults to RUN_TIME)
+  NPM_CONFIG_LEGACY_PEER_DEPS:
+    value: "true"
+    scope: BUILD_TIME       # Extended format with scope
 ```
 
 ### Encrypted (type: SECRET)
 ```yaml
 secrets:
-  - DATABASE_URL
-  - AUTH_SECRET
-  - STRIPE_SECRET_KEY
+  - DATABASE_URL            # Simple (defaults to RUN_TIME)
+  - name: NPM_TOKEN
+    scope: BUILD_TIME       # Extended format with scope
 ```
+
+### Scope Options
+| Scope | When Available |
+|-------|----------------|
+| `RUN_TIME` (default) | Only at run-time |
+| `BUILD_TIME` | Only at build-time |
+| `RUN_AND_BUILD_TIME` | Both build and run-time |
 
 **Steps for secrets:**
 1. Add secret to GitHub (Settings → Secrets and variables → Actions)
-2. Add name to `secrets:` list in config.yaml
+2. Add name to `secrets:` list in config.yaml (with optional scope)
 3. Deploy - the workflow injects it automatically
 
 You can have any number of envs and secrets. The workflow reads your lists and generates the app spec dynamically.
