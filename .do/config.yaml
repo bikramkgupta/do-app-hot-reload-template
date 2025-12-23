@@ -1,0 +1,80 @@
+#
+# Hot Reload Dev Environment Configuration
+#
+# This file stores your deployment settings. Edit once, deploy many times.
+# The GitHub Actions workflow reads this file to generate the app spec.
+#
+# Usage:
+#   1. Copy this file to your repository's .do/config.yaml
+#   2. Edit the values below
+#   3. Run: gh workflow run deploy-app.yml -f action=deploy
+#
+# Workflow inputs override these values when provided.
+#
+
+# === App Settings ===
+app_name: hot-reload-dev
+region: syd1  # nyc1, nyc3, ams3, sfo3, sgp1, lon1, fra1, tor1, blr1, syd1
+
+# Runtime image - determines which languages are available
+# Options: node, bun, python, go, ruby, node-python, full
+runtime: node
+
+# Instance size - see https://docs.digitalocean.com/products/app-platform/details/pricing/
+# Shared CPU (dev/testing):
+#   apps-s-1vcpu-0.5gb, apps-s-1vcpu-1gb, apps-s-1vcpu-2gb, apps-s-2vcpu-4gb
+# Dedicated CPU (production-like):
+#   apps-d-1vcpu-0.5gb, apps-d-1vcpu-1gb, apps-d-1vcpu-2gb, apps-d-1vcpu-4gb
+#   apps-d-2vcpu-4gb, apps-d-2vcpu-8gb, apps-d-4vcpu-8gb, apps-d-4vcpu-16gb, apps-d-8vcpu-32gb
+instance_size: apps-s-1vcpu-2gb
+
+# === Repository Settings ===
+# Leave branch empty to use the repository's default branch
+branch: ""
+
+# For monorepos: specify the subfolder containing your app (e.g., "apps/web")
+repo_folder: ""
+
+# === Sync Settings ===
+# How often to sync code from GitHub (seconds)
+# Lower = faster updates, higher = less resource usage
+sync_interval: 15
+
+# === Startup Command ===
+# Your repository should contain a dev_startup.sh script.
+# See examples/ in this template for reference scripts.
+# This command runs after code is synced.
+dev_start_command: bash dev_startup.sh
+
+# === Deploy Jobs ===
+# Commands that run when code changes are detected (on git commit change, not every sync)
+# These are useful for database migrations, cache clearing, etc.
+
+# Pre-deploy: runs BEFORE app starts (must succeed or deployment fails)
+# Example: npm run db:migrate
+pre_deploy_command: ""
+pre_deploy_timeout: 300
+
+# Post-deploy: runs AFTER app starts (failure is logged but app continues)
+# Example: npm run db:seed
+post_deploy_command: ""
+post_deploy_timeout: 300
+
+# === Secrets ===
+# List the SECRET NAMES (not values!) to inject into your app.
+# Values are pulled from GitHub Secrets.
+#
+# To add a secret:
+#   1. Go to GitHub repo → Settings → Secrets and variables → Actions
+#   2. Add a secret (e.g., DATABASE_URL)
+#   3. Add the name to this list
+#
+# Common secrets (add what you need):
+secrets:
+  # - DATABASE_URL
+  # - REDIS_URL
+  # - API_KEY
+  # - AUTH_SECRET
+  # - STRIPE_SECRET_KEY
+  # - AWS_ACCESS_KEY_ID
+  # - AWS_SECRET_ACCESS_KEY

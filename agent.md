@@ -7,9 +7,10 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  GITHUB ACTIONS (Recommended for AI Agents)                     │
-│    • One command to deploy: gh workflow run                    │
+│    • Configure once in .do/config.yaml                         │
+│    • Deploy with: gh workflow run deploy-app.yml               │
 │    • Secrets stay in GitHub - never in conversation logs       │
-│    • No need to handle GITHUB_REPO_URL - auto-detected         │
+│    • GITHUB_REPO_URL is auto-detected                          │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
@@ -20,49 +21,58 @@
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Quick Deploy via GitHub Actions (Recommended)
+## Quick Deploy via GitHub Actions
 
 ### Prerequisites
-Ensure these GitHub Secrets are configured in the repository:
+Ensure these GitHub Secrets are configured:
 - `DIGITALOCEAN_ACCESS_TOKEN` (required)
 - `APP_GITHUB_TOKEN` (if private repo)
 - Any app-specific secrets (DATABASE_URL, etc.)
 
-### Deploy a New App
+### One-Time Setup: Create .do/config.yaml
+
+```yaml
+app_name: my-dev-app
+runtime: node
+region: syd1
+instance_size: apps-s-1vcpu-2gb
+branch: main
+sync_interval: 15
+dev_start_command: bash dev_startup.sh
+
+# Deploy jobs (optional)
+pre_deploy_command: ""
+post_deploy_command: ""
+```
+
+### Deploy (Simple)
+
+```bash
+# Uses config.yaml settings - no arguments needed!
+gh workflow run deploy-app.yml -f action=deploy
+```
+
+That's it! The workflow reads `.do/config.yaml` and handles everything.
+
+### Deploy (With Overrides)
 
 ```bash
 gh workflow run deploy-app.yml \
   -f action=deploy \
-  -f app_name=my-dev-app \
-  -f runtime=node \
-  -f region=syd1
+  -f app_name=my-feature-test \
+  -f runtime=python \
+  -f region=nyc1
 ```
-
-That's it! The workflow handles:
-- Setting `GITHUB_REPO_URL` automatically from repository context
-- Injecting secrets from GitHub Secrets
-- Creating or updating the app
 
 ### Delete an App
 
 ```bash
-gh workflow run deploy-app.yml \
-  -f action=delete \
-  -f app_name=my-dev-app
+# Uses app_name from config.yaml
+gh workflow run deploy-app.yml -f action=delete
+
+# Or specify explicitly
+gh workflow run deploy-app.yml -f action=delete -f app_name=my-dev-app
 ```
-
-### Available Parameters
-
-| Parameter | Options | Default |
-|-----------|---------|---------|
-| `action` | deploy, delete | deploy |
-| `app_name` | string | hot-reload-dev |
-| `runtime` | node, bun, python, go, ruby, node-python, full | node |
-| `region` | nyc1, nyc3, ams3, sfo3, sgp1, lon1, fra1, tor1, blr1, syd1 | syd1 |
-| `instance_size` | apps-s-1vcpu-0.5gb, apps-s-1vcpu-1gb, apps-s-1vcpu-2gb, apps-s-2vcpu-4gb | apps-s-1vcpu-1gb |
-| `branch` | string | (default branch) |
-| `repo_folder` | string | (root) |
-| `dev_start_command` | string | bash dev_startup.sh |
 
 ### Check Workflow Status
 
@@ -79,6 +89,36 @@ gh run view --log
 
 ---
 
+## Available Parameters
+
+All parameters are optional—they override `.do/config.yaml` values.
+
+| Parameter | Options | Default |
+|-----------|---------|---------|
+| `action` | deploy, delete | deploy |
+| `app_name` | string | hot-reload-dev |
+| `runtime` | node, bun, python, go, ruby, node-python, full | node |
+| `region` | nyc1, nyc3, ams3, sfo3, sgp1, lon1, fra1, tor1, blr1, syd1 | syd1 |
+| `instance_size` | see pricing docs | apps-s-1vcpu-2gb |
+| `branch` | string | (default branch) |
+| `repo_folder` | string | (root) |
+| `sync_interval` | number | 15 |
+| `dev_start_command` | string | bash dev_startup.sh |
+| `pre_deploy_command` | string | (none) |
+| `post_deploy_command` | string | (none) |
+
+### Instance Sizes
+
+See [DigitalOcean Pricing](https://docs.digitalocean.com/products/app-platform/details/pricing/) for current prices.
+
+**Shared CPU (dev/testing):**
+- `apps-s-1vcpu-0.5gb`, `apps-s-1vcpu-1gb`, `apps-s-1vcpu-2gb`, `apps-s-2vcpu-4gb`
+
+**Dedicated CPU (production-like):**
+- `apps-d-1vcpu-0.5gb` through `apps-d-8vcpu-32gb`
+
+---
+
 ## Why GitHub Actions for AI Agents?
 
 | Approach | Secrets Handling | AI-Friendly | Complexity |
@@ -88,108 +128,68 @@ gh run view --log
 | DO Console | ✅ Manual entry | ❌ Not automatable | Medium |
 
 **Benefits for AI agents:**
-1. **No secret exposure** - Secrets never appear in conversation
-2. **No GITHUB_REPO_URL needed** - Automatically detected
-3. **No doctl installation** - Just `gh` CLI
-4. **Idempotent** - Same command creates or updates
+1. **Configure once** - Set `.do/config.yaml`, never re-enter
+2. **No secret exposure** - Secrets never appear in conversation
+3. **No GITHUB_REPO_URL needed** - Automatically detected
+4. **No doctl installation** - Just `gh` CLI
+5. **Idempotent** - Same command creates or updates
 
 ---
 
-## Alternative: Deploy with doctl CLI
+## Secrets Management
 
-Use this approach only if GitHub Actions is not available.
+The workflow automatically injects these secrets from GitHub Secrets:
 
-### 1. Choose the right image
+**Databases:**
+- `DATABASE_URL`, `REDIS_URL`
 
-| Runtime | Image |
-|---------|-------|
-| Node.js | `ghcr.io/bikramkgupta/hot-reload-node` |
-| Bun | `ghcr.io/bikramkgupta/hot-reload-bun` |
-| Python | `ghcr.io/bikramkgupta/hot-reload-python` |
-| Go | `ghcr.io/bikramkgupta/hot-reload-go` |
-| Ruby | `ghcr.io/bikramkgupta/hot-reload-ruby` |
-| Node + Python | `ghcr.io/bikramkgupta/hot-reload-node-python` |
-| All runtimes | `ghcr.io/bikramkgupta/hot-reload-full` |
+**Authentication:**
+- `AUTH_SECRET`, `NEXTAUTH_SECRET`, `JWT_SECRET`
 
-### 2. Create app spec
+**API Keys:**
+- `API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
 
-```yaml
-name: dev-environment
-region: syd1
+**Payments:**
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 
-services:
-  - name: dev-workspace
-    image:
-      registry_type: GHCR
-      registry: bikramkgupta
-      repository: hot-reload-node  # Change for your runtime
-      tag: latest
-    http_port: 8080
-    health_check:
-      http_path: /health
-      port: 8080
-    envs:
-      - key: GITHUB_REPO_URL
-        value: "https://github.com/USER/REPO"
-      - key: DEV_START_COMMAND
-        value: "bash dev_startup.sh"
-      # Only if private repo:
-      - key: GITHUB_TOKEN
-        value: ""
-        type: SECRET
-```
+**Cloud:**
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 
-### 3. Deploy
+**Email:**
+- `SMTP_PASSWORD`, `SENDGRID_API_KEY`, `RESEND_API_KEY`
 
-```bash
-doctl apps create --spec app.yaml
-```
-
-### 4. Add secrets via local spec (never commit!)
-
-Create `.do/app.local.yaml`:
-
-```yaml
-name: dev-environment
-services:
-  - name: dev-workspace
-    envs:
-      - key: DATABASE_URL
-        value: "postgresql://user:pass@host:5432/db"
-        scope: RUN_TIME
-```
-
-```bash
-doctl apps update $APP_ID --spec .do/app.local.yaml
-```
+Add secrets to GitHub (Settings → Secrets and variables → Actions), and they're automatically available to your app.
 
 ---
 
 ## User's Repository Setup
 
-Tell users their repo needs:
+The user's repo needs a `dev_startup.sh` script:
 
 ### dev_startup.sh (required)
 
 ```bash
 #!/bin/bash
-# Environment variables are injected by DO App Platform
-# No need to load .env - secrets come from GitHub Secrets
+set -e
 
-# Install dependencies and start dev server
-npm install
-npm run dev -- --hostname 0.0.0.0 --port 8080
+# Detect package.json changes and reinstall
+HASH_FILE=".deps_hash"
+CURRENT_HASH=$(sha256sum package.json 2>/dev/null | cut -d' ' -f1 || echo "none")
+STORED_HASH=$(cat "$HASH_FILE" 2>/dev/null || echo "")
+
+if [ "$CURRENT_HASH" != "$STORED_HASH" ] || [ ! -d "node_modules" ]; then
+    echo "Installing dependencies..."
+    npm install
+    echo "$CURRENT_HASH" > "$HASH_FILE"
+fi
+
+# Start dev server - MUST bind to 0.0.0.0:8080
+exec npm run dev -- --hostname 0.0.0.0 --port 8080
 ```
 
-### .env.example (template only - no real values!)
+> **Important:** Use `dev_startup.sh` for dependency installation, NOT `PRE_DEPLOY_COMMAND`. If `PRE_DEPLOY_COMMAND` fails, the container exits and you lose shell access.
 
-```bash
-# Copy to .env.local for local development
-# For deployed apps, secrets are managed via GitHub Secrets
-DATABASE_URL=
-API_KEY=
-STRIPE_SECRET=
-```
+See `examples/` for complete scripts for each runtime.
 
 ---
 
@@ -200,18 +200,13 @@ STRIPE_SECRET=
 ### Installation
 
 ```bash
-# Requires Python 3.10.12+ and doctl authenticated
 pip install do-app-sandbox
 ```
 
 ### Get App ID
 
 ```bash
-# List apps
-doctl apps list
-
-# Or from workflow output
-gh run view --log | grep "App Name"
+doctl apps list --format ID,Name --no-header
 ```
 
 ### Execute Commands in Container
@@ -219,18 +214,16 @@ gh run view --log | grep "App Name"
 ```bash
 # Run any command in the running container
 sandbox exec $APP_ID "ls -la /workspaces/app"
-sandbox exec $APP_ID "cat .env"
 sandbox exec $APP_ID "ps aux"
 sandbox exec $APP_ID "node --version"
 
 # Check git sync status
 sandbox exec $APP_ID "cd /workspaces/app && git log -1 --oneline"
-sandbox exec $APP_ID "cat /tmp/last_job_commit.txt"
 
 # Debug application issues
+sandbox exec $APP_ID "tail -100 /tmp/app.log"
 sandbox exec $APP_ID "cat /workspaces/app/package.json"
-sandbox exec $APP_ID "npm list --depth=0"
-sandbox exec $APP_ID "tail -50 /tmp/app.log"
+sandbox exec $APP_ID "env | grep DATABASE"
 ```
 
 ### Common Debugging Scenarios
@@ -242,7 +235,6 @@ sandbox exec $APP_ID "tail -50 /tmp/app.log"
 | Check env loaded | `sandbox exec $APP_ID "env \| grep DATABASE"` |
 | View app logs | `sandbox exec $APP_ID "cat /tmp/*.log"` |
 | Check disk space | `sandbox exec $APP_ID "df -h"` |
-| Test connectivity | `sandbox exec $APP_ID "curl -I https://api.example.com"` |
 
 ---
 
@@ -251,10 +243,7 @@ sandbox exec $APP_ID "tail -50 /tmp/app.log"
 ### Step 1: Deploy
 
 ```bash
-gh workflow run deploy-app.yml \
-  -f action=deploy \
-  -f app_name=my-feature-test \
-  -f runtime=node
+gh workflow run deploy-app.yml -f action=deploy
 ```
 
 ### Step 2: Wait for deployment
@@ -278,16 +267,14 @@ doctl apps list --format Name,LiveURL
 ### Step 4: Debug if needed
 
 ```bash
-APP_ID=$(doctl apps list --format ID,Name --no-header | grep "my-feature-test" | awk '{print $1}')
+APP_ID=$(doctl apps list --format ID,Name --no-header | grep "my-dev-app" | awk '{print $1}')
 sandbox exec $APP_ID "tail -100 /tmp/app.log"
 ```
 
 ### Step 5: Clean up when done
 
 ```bash
-gh workflow run deploy-app.yml \
-  -f action=delete \
-  -f app_name=my-feature-test
+gh workflow run deploy-app.yml -f action=delete
 ```
 
 ---
@@ -298,18 +285,20 @@ gh workflow run deploy-app.yml \
 |-------|-------|-----|
 | Workflow fails | `gh run view --log` | Check DIGITALOCEAN_ACCESS_TOKEN secret |
 | Container not starting | `doctl apps logs $APP_ID --type deploy` | Check image name |
-| App not running | `doctl apps logs $APP_ID --type run` | Check DEV_START_COMMAND |
-| Code not syncing | `sandbox exec $APP_ID "cd /workspaces/app && git status"` | Check GITHUB_REPO_URL |
+| App not running | `doctl apps logs $APP_ID --type run` | Check dev_startup.sh exists |
+| Code not syncing | `sandbox exec $APP_ID "cd /workspaces/app && git status"` | Check branch setting |
 | Private repo access denied | Check logs for auth errors | Add APP_GITHUB_TOKEN secret |
+| npm install fails | Check instance size | Use apps-s-1vcpu-2gb or larger |
 
 ---
 
 ## What NOT to Do
 
 1. **Don't expose secrets in commands** - Use GitHub Secrets, not inline values
-2. **Don't use `dockerfile_path`** - Use pre-built images for ~1 minute deploys
-3. **Don't enable `deploy_on_push`** - We want git sync, not full rebuilds
-4. **Don't hardcode GITHUB_REPO_URL** - Let the workflow detect it automatically
+2. **Don't use `PRE_DEPLOY_COMMAND` for npm install** - It fails → container exits → no shell access
+3. **Don't use `dockerfile_path`** - Use pre-built images for ~1 minute deploys
+4. **Don't enable `deploy_on_push`** - We want git sync, not full rebuilds
+5. **Don't hardcode GITHUB_REPO_URL** - Let the workflow detect it automatically
 
 ---
 
@@ -317,12 +306,13 @@ gh workflow run deploy-app.yml \
 
 ```
 # In repository:
+.do/config.yaml                   # Persistent deployment settings
 .github/workflows/deploy-app.yml  # GitHub Actions workflow
-.do/app.yaml                      # App spec template with placeholders
 
 # In container:
 /workspaces/app/                  # User's cloned repo
 /tmp/last_job_commit.txt          # Last synced commit
+/tmp/app.log                      # Application logs
 ```
 
 ---
@@ -337,13 +327,8 @@ doctl apps list
 doctl apps get $APP_ID
 
 # View logs
-doctl apps logs $APP_ID COMPONENT --type run
-doctl apps logs $APP_ID COMPONENT --type build
-doctl apps logs $APP_ID COMPONENT --type deploy
-
-# Get/update spec
-doctl apps spec get $APP_ID > spec.yaml
-doctl apps update $APP_ID --spec spec.yaml
+doctl apps logs $APP_ID dev-workspace --type run
+doctl apps logs $APP_ID dev-workspace --type deploy
 
 # Force redeploy
 doctl apps create-deployment $APP_ID
