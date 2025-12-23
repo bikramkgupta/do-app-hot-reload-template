@@ -13,32 +13,53 @@ Pre-built Docker images with Node.js, Python, or Go ready to go. Deploy any code
 
 ## Quick Start
 
+### Option 1: GitHub Actions (Recommended)
+
+**Best for: AI agents, teams, and anyone who wants secrets managed securely.**
+
+[![Deploy via GitHub Actions](https://img.shields.io/badge/Deploy-GitHub%20Actions-2088FF?logo=github-actions&logoColor=white)](../../actions/workflows/deploy-app.yml)
+
+1. **Fork this repository** (or copy the workflow to your project)
+
+2. **Add GitHub Secrets** (Settings → Secrets and variables → Actions):
+
+   | Secret | Required | Description |
+   |--------|----------|-------------|
+   | `DIGITALOCEAN_ACCESS_TOKEN` | Yes | Your DO API token |
+   | `APP_GITHUB_TOKEN` | If private repo | GitHub PAT for private repos |
+   | `DATABASE_URL` | If needed | Database connection string |
+
+3. **Run the workflow**:
+   - Go to Actions → "Deploy to DigitalOcean App Platform"
+   - Click "Run workflow"
+   - Select your runtime (node, python, go, etc.)
+   - Click "Run workflow"
+
+That's it! The workflow handles everything—no CLI needed, secrets stay secure.
+
+**Benefits:**
+- Secrets never exposed in logs or app specs
+- Works with public and private repos
+- AI agents can trigger via `gh workflow run`
+- No `doctl` installation required
+- Automatic `GITHUB_REPO_URL` from repository context
+
+### Option 2: Deploy Button
+
 [![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-hot-reload-template/tree/main)
 
-### 1. Deploy the Container (~1 minute)
+### Option 3: CLI with doctl
 
 ```bash
-# Using doctl CLI
+# Clone and deploy
 doctl apps create --spec app.yaml
+
+# After deployment, set environment variables in DO Console
 ```
 
-Or use the DO Console:
-1. Create App → Deploy from Container Registry
-2. Registry: `ghcr.io`
-3. Image: `bikramkgupta/hot-reload-node` (or python, go, etc.)
-4. Tag: `latest`
+## After Deployment
 
-### 2. Configure Your App (DO Console)
-
-After deployment, set environment variables:
-
-| Variable | Value | Required |
-|----------|-------|----------|
-| `GITHUB_REPO_URL` | `https://github.com/you/your-app` | Yes |
-| `GITHUB_TOKEN` | Your PAT (for private repos) | If private |
-| `DEV_START_COMMAND` | `bash dev_startup.sh` | Recommended |
-
-### 3. Add dev_startup.sh to Your Repo
+### 1. Add dev_startup.sh to Your Repo
 
 ```bash
 #!/bin/bash
@@ -48,7 +69,22 @@ npm run dev -- --hostname 0.0.0.0 --port 8080
 
 See [`examples/`](examples/) for startup scripts that handle dependency changes automatically (Next.js, Python, Go, Rails).
 
-That's it! Your app syncs from GitHub every 15 seconds with hot reload.
+### 2. Your Code Syncs Automatically
+
+The container syncs from GitHub every 15 seconds with hot reload.
+
+## Why GitHub Actions?
+
+| Approach | Secrets Handling | AI-Friendly | Setup Complexity |
+|----------|------------------|-------------|------------------|
+| **GitHub Actions** | ✅ GitHub Secrets | ✅ `gh workflow run` | Low |
+| doctl CLI | ⚠️ Local files | ⚠️ Complex commands | Medium |
+| DO Console | ✅ Manual entry | ❌ Not automatable | Medium |
+
+**For AI agents**, GitHub Actions is the clear winner:
+- Agent runs `gh workflow run deploy-app.yml -f action=deploy -f runtime=node`
+- No need to handle secrets or complex CLI arguments
+- No risk of exposing secrets in conversation logs
 
 ## Why This Exists
 
@@ -72,74 +108,28 @@ Standard App Platform deploys go through build, push to registry, and deploy—w
 
 **An important feature of this template is shell access when things break.**
 
-The health check runs on **port 9090** (separate from your app on port 8080). This is intentional:
+The health check runs on **port 8080** where the welcome-page-server responds to `/health` until your app starts. This ensures:
 
 | Component | Port | Purpose |
 |-----------|------|---------|
 | Your app | 8080 | Your application |
-| Health check | 9090 | Keeps container alive |
+| Welcome server | 8080 | Responds to health checks until app starts |
 
 **Why this matters:**
-- If your app crashes, the container **stays alive** because health check still responds
-- You can shell in with [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox) and debug
+- If your app crashes, you can shell in with [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox) and debug
 - AI assistants can connect and help fix issues remotely
-
-**Do not change the health check to port 8080** for dev environments. That defeats the purpose—a broken app would kill the container and you'd lose access.
 
 ## Available Images
 
 | Image | Runtimes | Use Case |
 |-------|----------|----------|
 | `ghcr.io/bikramkgupta/hot-reload-node` | Node.js 22/24 | Next.js, React, Express |
+| `ghcr.io/bikramkgupta/hot-reload-bun` | Bun (latest) | Bun apps, fast bundling |
 | `ghcr.io/bikramkgupta/hot-reload-python` | Python 3.12/3.13 | FastAPI, Django, Flask |
 | `ghcr.io/bikramkgupta/hot-reload-go` | Go 1.23 | Go APIs, CLI tools |
 | `ghcr.io/bikramkgupta/hot-reload-ruby` | Ruby 3.4/3.3 | Rails, Sinatra, Hanami |
 | `ghcr.io/bikramkgupta/hot-reload-node-python` | Node.js + Python | Full-stack apps |
 | `ghcr.io/bikramkgupta/hot-reload-full` | Node + Python + Go | Multi-language |
-
-## App Spec Example
-
-```yaml
-name: my-dev-app
-region: syd1
-
-services:
-  - name: dev-workspace
-    image:
-      registry_type: GHCR
-      repository: bikramkgupta/hot-reload-node
-      tag: latest
-    http_port: 8080
-    internal_ports:
-      - 9090  # Health check port (keeps container alive if app crashes)
-    health_check:
-      http_path: /dev_health
-      port: 9090  # Separate from app - ensures shell access for debugging
-    envs:
-      - key: GITHUB_REPO_URL
-        value: "https://github.com/you/your-app"
-      - key: DEV_START_COMMAND
-        value: "bash dev_startup.sh"
-```
-
-See `app-specs/` for complete examples.
-
-## How It Works
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Your Deploy (~1 min)                                        │
-│                                                              │
-│  1. Pull pre-built image from GHCR (30 sec)                 │
-│  2. Start container                                          │
-│  3. Clone your repo from GitHub                             │
-│  4. Run your dev_startup.sh                                 │
-│  5. Your app is live!                                       │
-│                                                              │
-│  Continuous: Git sync every 15 seconds                      │
-│              Your dev server handles hot reload             │
-└─────────────────────────────────────────────────────────────┘
-```
 
 ## Environment Variables
 
@@ -147,7 +137,7 @@ See `app-specs/` for complete examples.
 
 | Variable | Description |
 |----------|-------------|
-| `GITHUB_REPO_URL` | Your application repository |
+| `GITHUB_REPO_URL` | Your application repository (auto-set by Actions) |
 | `DEV_START_COMMAND` | Startup command (or add `dev_startup.sh` to repo) |
 
 ### Optional
@@ -170,42 +160,36 @@ Run commands when code changes are detected (on git commit change, not every syn
 | `POST_DEPLOY_COMMAND` | - | Runs after app starts (e.g., `bash scripts/seed.sh`) |
 | `POST_DEPLOY_TIMEOUT` | 300 | Timeout in seconds |
 
-### Managing Secrets
+## Managing Secrets
 
-**Never commit secrets to GitHub** (public or private repos). Instead, use a local app spec file:
+### With GitHub Actions (Recommended)
 
-1. Create a local spec file with your secrets:
-   ```bash
-   # .do/app.local.yaml (add to .gitignore)
-   ```
+Add secrets to GitHub repository settings:
+1. Go to Settings → Secrets and variables → Actions
+2. Add your secrets (DATABASE_URL, API_KEY, etc.)
+3. Reference them in the workflow—they're automatically injected
 
-   ```yaml
-   name: my-dev-app
-   services:
-     - name: dev-workspace
-       envs:
-         - key: DATABASE_URL
-           value: "postgresql://user:pass@host:5432/db"
-           scope: RUN_TIME
-         - key: NEXTAUTH_SECRET
-           value: "your-secret-here"
-           scope: RUN_TIME
-         # ... other secrets
-   ```
+### With doctl (Alternative)
 
-2. Add to `.gitignore`:
-   ```
-   .do/app.local.yaml
-   ```
+Create a local spec file with your secrets (never commit!):
 
-3. Deploy with your local spec:
-   ```bash
-   doctl apps update <app-id> --spec .do/app.local.yaml
-   ```
+```bash
+# .do/app.local.yaml (add to .gitignore)
+```
 
-This keeps secrets on your local machine, never in version control. You can have different local specs for different environments.
+```yaml
+name: my-dev-app
+services:
+  - name: dev-workspace
+    envs:
+      - key: DATABASE_URL
+        value: "postgresql://user:pass@host:5432/db"
+        scope: RUN_TIME
+```
 
-> **Note:** The [AI agent playbook](agent.md) follows this same approach for secrets management.
+```bash
+doctl apps update <app-id> --spec .do/app.local.yaml
+```
 
 ## Example Startup Scripts
 
@@ -217,10 +201,45 @@ See [`examples/`](examples/) for complete startup scripts for each runtime:
 
 These scripts handle dependency caching and change detection automatically.
 
+## GitHub Actions Workflow Reference
+
+### Deploy an App
+
+```bash
+# Via GitHub CLI
+gh workflow run deploy-app.yml \
+  -f action=deploy \
+  -f app_name=my-dev-app \
+  -f runtime=node \
+  -f region=syd1
+
+# Or use the GitHub UI: Actions → Deploy to DigitalOcean App Platform → Run workflow
+```
+
+### Delete an App
+
+```bash
+gh workflow run deploy-app.yml \
+  -f action=delete \
+  -f app_name=my-dev-app
+```
+
+### Workflow Inputs
+
+| Input | Options | Default | Description |
+|-------|---------|---------|-------------|
+| `action` | deploy, delete | deploy | Action to perform |
+| `app_name` | string | hot-reload-dev | App name |
+| `runtime` | node, bun, python, go, ruby, node-python, full | node | Runtime image |
+| `region` | nyc1, sfo3, ams3, sgp1, lon1, fra1, tor1, blr1, syd1 | syd1 | DO region |
+| `instance_size` | apps-s-1vcpu-0.5gb, apps-s-1vcpu-1gb, etc. | apps-s-1vcpu-1gb | Instance size |
+| `branch` | string | (default) | Git branch to sync |
+| `repo_folder` | string | (root) | Subfolder for monorepos |
+| `dev_start_command` | string | bash dev_startup.sh | Startup command |
+
 ## Important Notes
 
 - **Port 8080**: Your app must listen on port 8080, bound to `0.0.0.0`
-- **Health check on 9090**: The dev health server runs on port 9090, separate from your app. This keeps the container alive even if your app crashes, giving you shell access to debug.
 - **Hot reload**: Use a dev server that supports it (`npm run dev`, `uvicorn --reload`, etc.)
 - **Resource sizing**: Ensure your container has enough CPU/memory. npm install for large projects needs resources.
 - **No rebuild needed**: Change env vars and redeploy—your code syncs automatically
@@ -236,13 +255,16 @@ Need a different runtime combo? See [GHCR_SETUP.md](GHCR_SETUP.md) for instructi
 | App doesn't start | Check `GITHUB_REPO_URL` is set, `dev_startup.sh` exists |
 | Health check fails | Ensure app listens on port 8080 |
 | Changes not visible | Use a dev server with hot reload |
-| Private repo access | Set `GITHUB_TOKEN` as a secret |
+| Private repo access | Set `APP_GITHUB_TOKEN` as a GitHub secret |
+| Workflow fails | Check `DIGITALOCEAN_ACCESS_TOKEN` is set |
 
 ## Files in This Repo
 
 ```
 ├── Dockerfile              # Multi-stage build for all runtimes
-├── app.yaml               # Default app spec (Node.js)
+├── app.yaml               # Default app spec for doctl
+├── .do/
+│   └── app.yaml           # App spec template for GitHub Actions
 ├── app-specs/             # App specs for each runtime
 │   ├── app-node.yaml
 │   ├── app-python.yaml
@@ -259,7 +281,8 @@ Need a different runtime combo? See [GHCR_SETUP.md](GHCR_SETUP.md) for instructi
 │   ├── github-sync.sh     # Continuous sync daemon
 │   └── welcome-page-server/  # Welcome page + health endpoint
 └── .github/workflows/
-    └── build-and-push-images.yml  # Builds images to GHCR
+    ├── build-and-push-images.yml  # Builds images to GHCR
+    └── deploy-app.yml            # Deploy/delete apps via Actions
 ```
 
 ## Contributing

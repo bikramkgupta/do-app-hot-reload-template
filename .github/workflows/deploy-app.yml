@@ -1,0 +1,195 @@
+name: Deploy to DigitalOcean App Platform
+
+# Manual trigger only - no automatic deployments
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - deploy
+          - delete
+        default: 'deploy'
+      app_name:
+        description: 'App name (used for both create and update)'
+        required: true
+        default: 'hot-reload-dev'
+      runtime:
+        description: 'Runtime image to use'
+        required: true
+        type: choice
+        options:
+          - node
+          - bun
+          - python
+          - go
+          - ruby
+          - node-python
+          - full
+        default: 'node'
+      region:
+        description: 'DigitalOcean region'
+        required: true
+        type: choice
+        options:
+          - nyc1
+          - nyc3
+          - ams3
+          - sfo3
+          - sgp1
+          - lon1
+          - fra1
+          - tor1
+          - blr1
+          - syd1
+        default: 'syd1'
+      instance_size:
+        description: 'Instance size'
+        required: true
+        type: choice
+        options:
+          - apps-s-1vcpu-0.5gb
+          - apps-s-1vcpu-1gb
+          - apps-s-1vcpu-2gb
+          - apps-s-2vcpu-4gb
+        default: 'apps-s-1vcpu-1gb'
+      branch:
+        description: 'Git branch to sync (leave empty for default)'
+        required: false
+        default: ''
+      repo_folder:
+        description: 'Subfolder for monorepos (leave empty for root)'
+        required: false
+        default: ''
+      dev_start_command:
+        description: 'Dev start command (or use dev_startup.sh in your repo)'
+        required: false
+        default: 'bash dev_startup.sh'
+
+# Ensure secrets are not exposed in logs
+env:
+  # Pass secrets as environment variables for app spec substitution
+  GITHUB_PAT: ${{ secrets.APP_GITHUB_TOKEN }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  # Add more secrets as needed - they will be substituted into the app spec
+  # using ${VARIABLE_NAME} syntax
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ inputs.action == 'deploy' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate app spec
+        run: |
+          cat > .do/app.yaml << 'EOF'
+          name: ${{ inputs.app_name }}
+          region: ${{ inputs.region }}
+
+          services:
+            - name: dev-workspace
+              image:
+                registry_type: GHCR
+                registry: bikramkgupta
+                repository: hot-reload-${{ inputs.runtime }}
+                tag: latest
+              instance_count: 1
+              instance_size_slug: ${{ inputs.instance_size }}
+              http_port: 8080
+              health_check:
+                http_path: /health
+                initial_delay_seconds: 10
+                period_seconds: 10
+                timeout_seconds: 5
+                success_threshold: 1
+                failure_threshold: 3
+                port: 8080
+              envs:
+                - key: GITHUB_REPO_URL
+                  value: "https://github.com/${{ github.repository }}"
+                  scope: RUN_TIME
+                - key: GITHUB_TOKEN
+                  value: "${GITHUB_PAT}"
+                  scope: RUN_TIME
+                  type: SECRET
+                - key: GITHUB_BRANCH
+                  value: "${{ inputs.branch }}"
+                  scope: RUN_TIME
+                - key: GITHUB_REPO_FOLDER
+                  value: "${{ inputs.repo_folder }}"
+                  scope: RUN_TIME
+                - key: DEV_START_COMMAND
+                  value: "${{ inputs.dev_start_command }}"
+                  scope: RUN_TIME
+                - key: GITHUB_SYNC_INTERVAL
+                  value: "15"
+                  scope: RUN_TIME
+                - key: WORKSPACE_PATH
+                  value: "/workspaces/app"
+                  scope: RUN_TIME
+                # Database URL - automatically injected from GitHub Secrets
+                - key: DATABASE_URL
+                  value: "${DATABASE_URL}"
+                  scope: RUN_TIME
+                  type: SECRET
+
+          alerts:
+            - rule: DEPLOYMENT_FAILED
+            - rule: DOMAIN_FAILED
+          EOF
+
+          echo "Generated app spec:"
+          cat .do/app.yaml
+
+      - name: Deploy to DigitalOcean App Platform
+        uses: digitalocean/app_action/deploy@v2
+        id: deploy
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          app_spec_location: '.do/app.yaml'
+          print_build_logs: true
+          print_deploy_logs: true
+
+      - name: Output deployment info
+        run: |
+          echo "## Deployment Successful! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**App Name:** ${{ inputs.app_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Runtime:** ${{ inputs.runtime }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${{ inputs.region }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          APP_URL=$(echo '${{ steps.deploy.outputs.app }}' | jq -r '.live_url // empty')
+          if [ -n "$APP_URL" ]; then
+            echo "**Live URL:** $APP_URL" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Add \`dev_startup.sh\` to your repo if you haven't already" >> $GITHUB_STEP_SUMMARY
+          echo "2. Your code will sync every 15 seconds from this repository" >> $GITHUB_STEP_SUMMARY
+          echo "3. Use [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox) for shell access" >> $GITHUB_STEP_SUMMARY
+
+  delete:
+    if: ${{ inputs.action == 'delete' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete app from DigitalOcean
+        uses: digitalocean/app_action/delete@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          app_name: ${{ inputs.app_name }}
+          ignore_not_found: true
+
+      - name: Output deletion info
+        run: |
+          echo "## App Deleted 🗑️" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**App Name:** ${{ inputs.app_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The app has been removed from DigitalOcean App Platform." >> $GITHUB_STEP_SUMMARY
