@@ -9,7 +9,7 @@
 #   2. Edit the values below
 #   3. Run: gh workflow run deploy-app.yml -f action=deploy
 #
-# Workflow inputs override these values when provided.
+# For advanced users: Set app_spec_path to use your own app spec instead.
 #
 
 # === App Settings ===
@@ -24,8 +24,7 @@ runtime: node
 # Shared CPU (dev/testing):
 #   apps-s-1vcpu-0.5gb, apps-s-1vcpu-1gb, apps-s-1vcpu-2gb, apps-s-2vcpu-4gb
 # Dedicated CPU (production-like):
-#   apps-d-1vcpu-0.5gb, apps-d-1vcpu-1gb, apps-d-1vcpu-2gb, apps-d-1vcpu-4gb
-#   apps-d-2vcpu-4gb, apps-d-2vcpu-8gb, apps-d-4vcpu-8gb, apps-d-4vcpu-16gb, apps-d-8vcpu-32gb
+#   apps-d-1vcpu-0.5gb through apps-d-8vcpu-32gb
 instance_size: apps-s-1vcpu-2gb
 
 # === Repository Settings ===
@@ -37,18 +36,15 @@ repo_folder: ""
 
 # === Sync Settings ===
 # How often to sync code from GitHub (seconds)
-# Lower = faster updates, higher = less resource usage
 sync_interval: 15
 
 # === Startup Command ===
 # Your repository should contain a dev_startup.sh script.
 # See examples/ in this template for reference scripts.
-# This command runs after code is synced.
 dev_start_command: bash dev_startup.sh
 
 # === Deploy Jobs ===
-# Commands that run when code changes are detected (on git commit change, not every sync)
-# These are useful for database migrations, cache clearing, etc.
+# Commands that run when code changes are detected (on git commit change)
 
 # Pre-deploy: runs BEFORE app starts (must succeed or deployment fails)
 # Example: npm run db:migrate
@@ -60,21 +56,47 @@ pre_deploy_timeout: 300
 post_deploy_command: ""
 post_deploy_timeout: 300
 
-# === Secrets ===
-# List the SECRET NAMES (not values!) to inject into your app.
-# Values are pulled from GitHub Secrets.
+# === Environment Variables (type: GENERAL) ===
+# Plain-text environment variables. Values can be specified here directly
+# or pulled from GitHub Variables (not Secrets).
+#
+# Format: KEY: value
+# The workflow will add these as type: GENERAL in the app spec.
+#
+envs:
+  # NODE_ENV: development
+  # LOG_LEVEL: debug
+  # PUBLIC_API_URL: https://api.example.com
+
+# === Secrets (type: SECRET) ===
+# Encrypted environment variables. Values are pulled from GitHub Secrets.
+# List only the SECRET NAMES here - actual values come from GitHub Secrets.
 #
 # To add a secret:
 #   1. Go to GitHub repo → Settings → Secrets and variables → Actions
 #   2. Add a secret (e.g., DATABASE_URL)
 #   3. Add the name to this list
 #
-# Common secrets (add what you need):
+# The workflow will add these as type: SECRET in the app spec.
+#
 secrets:
   # - DATABASE_URL
   # - REDIS_URL
-  # - API_KEY
   # - AUTH_SECRET
+  # - NEXTAUTH_SECRET
+  # - API_KEY
   # - STRIPE_SECRET_KEY
-  # - AWS_ACCESS_KEY_ID
-  # - AWS_SECRET_ACCESS_KEY
+
+# === Advanced: Custom App Spec ===
+# For complex deployments (VPC, custom domains, multiple services, etc.),
+# you can provide your own app spec instead of having the workflow generate one.
+#
+# Set this to your app spec path (relative to repo root):
+#   app_spec_path: .do/my-custom-app.yaml
+#
+# When set, the workflow will:
+#   - Use your spec directly (no generation)
+#   - Still substitute ${VAR} placeholders from GitHub Secrets
+#   - Skip all the settings above (they're in your spec)
+#
+# app_spec_path: ""

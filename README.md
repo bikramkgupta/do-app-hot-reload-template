@@ -189,22 +189,37 @@ Run commands when code changes are detected (on git commit change, not every syn
 | `POST_DEPLOY_COMMAND` | - | Runs after app starts (e.g., `bash scripts/seed.sh`) |
 | `POST_DEPLOY_TIMEOUT` | 300 | Timeout in seconds |
 
-## Managing Secrets
+## Managing Environment Variables & Secrets
 
-### With GitHub Actions (Recommended)
+The workflow supports two types of environment variables:
 
-Add secrets to GitHub repository settings:
+### Environment Variables (type: GENERAL)
+
+Plain-text variables defined directly in `.do/config.yaml`:
+
+```yaml
+envs:
+  NODE_ENV: development
+  LOG_LEVEL: debug
+  PUBLIC_API_URL: https://api.example.com
+```
+
+### Secrets (type: SECRET)
+
+Encrypted variables. Add to GitHub Secrets, then list in config:
+
 1. Go to Settings → Secrets and variables → Actions
-2. Add your secrets (DATABASE_URL, API_KEY, etc.)
-3. The workflow automatically injects them into your app
+2. Add your secret (e.g., `DATABASE_URL`)
+3. Add the name to `.do/config.yaml`:
 
-**Supported secrets** (add what you need):
-- `DATABASE_URL`, `REDIS_URL` - Databases
-- `AUTH_SECRET`, `NEXTAUTH_SECRET`, `JWT_SECRET` - Authentication
-- `API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` - API keys
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` - Payments
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` - Cloud
-- `SMTP_PASSWORD`, `SENDGRID_API_KEY`, `RESEND_API_KEY` - Email
+```yaml
+secrets:
+  - DATABASE_URL
+  - AUTH_SECRET
+  - STRIPE_SECRET_KEY
+```
+
+The workflow reads your lists and generates the app spec dynamically. You can have any number of envs and secrets.
 
 ### With doctl (Alternative)
 
@@ -219,6 +234,7 @@ services:
       - key: DATABASE_URL
         value: "postgresql://user:pass@host:5432/db"
         scope: RUN_TIME
+        type: SECRET
 ```
 
 ```bash
@@ -244,10 +260,18 @@ dev_start_command: bash dev_startup.sh
 pre_deploy_command: ""
 post_deploy_command: ""
 
-# Secrets to inject (list names, add values to GitHub Secrets)
+# Plain-text environment variables
+envs:
+  NODE_ENV: development
+  LOG_LEVEL: debug
+
+# Secrets (values from GitHub Secrets)
 secrets:
   - DATABASE_URL
   - AUTH_SECRET
+
+# Advanced: Use your own app spec instead
+# app_spec_path: .do/my-custom-app.yaml
 ```
 
 ### Deploy an App

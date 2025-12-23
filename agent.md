@@ -43,6 +43,20 @@ dev_start_command: bash dev_startup.sh
 # Deploy jobs (optional)
 pre_deploy_command: ""
 post_deploy_command: ""
+
+# Plain-text env vars (type: GENERAL)
+envs:
+  NODE_ENV: development
+  LOG_LEVEL: debug
+
+# Encrypted secrets (type: SECRET) - values from GitHub Secrets
+secrets:
+  - DATABASE_URL
+  - AUTH_SECRET
+  - STRIPE_SECRET_KEY
+
+# Advanced: Use your own app spec for complex deployments
+# app_spec_path: .do/my-custom-app.yaml
 ```
 
 ### Deploy (Simple)
@@ -136,29 +150,42 @@ See [DigitalOcean Pricing](https://docs.digitalocean.com/products/app-platform/d
 
 ---
 
-## Secrets Management
+## Environment Variables & Secrets
 
-The workflow automatically injects these secrets from GitHub Secrets:
+The workflow dynamically generates env vars from `.do/config.yaml`:
 
-**Databases:**
-- `DATABASE_URL`, `REDIS_URL`
+### Plain-text (type: GENERAL)
+```yaml
+envs:
+  NODE_ENV: development
+  LOG_LEVEL: debug
+```
 
-**Authentication:**
-- `AUTH_SECRET`, `NEXTAUTH_SECRET`, `JWT_SECRET`
+### Encrypted (type: SECRET)
+```yaml
+secrets:
+  - DATABASE_URL
+  - AUTH_SECRET
+  - STRIPE_SECRET_KEY
+```
 
-**API Keys:**
-- `API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
+**Steps for secrets:**
+1. Add secret to GitHub (Settings → Secrets and variables → Actions)
+2. Add name to `secrets:` list in config.yaml
+3. Deploy - the workflow injects it automatically
 
-**Payments:**
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+You can have any number of envs and secrets. The workflow reads your lists and generates the app spec dynamically.
 
-**Cloud:**
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+### Advanced: Custom App Spec
 
-**Email:**
-- `SMTP_PASSWORD`, `SENDGRID_API_KEY`, `RESEND_API_KEY`
+For complex deployments (VPC, custom domains, multiple services):
 
-Add secrets to GitHub (Settings → Secrets and variables → Actions), and they're automatically available to your app.
+```yaml
+# In .do/config.yaml
+app_spec_path: .do/my-custom-app.yaml
+```
+
+When set, the workflow uses your spec directly instead of generating one.
 
 ---
 

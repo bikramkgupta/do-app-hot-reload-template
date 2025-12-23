@@ -48,17 +48,15 @@ on:
           - syd1
         default: ''
       instance_size:
-        description: 'Instance size (leave empty to use config.yaml). See: https://docs.digitalocean.com/products/app-platform/details/pricing/'
+        description: 'Instance size. See: https://docs.digitalocean.com/products/app-platform/details/pricing/'
         required: false
         type: choice
         options:
           - ''
-          # Shared CPU - good for dev/testing
           - apps-s-1vcpu-0.5gb
           - apps-s-1vcpu-1gb
           - apps-s-1vcpu-2gb
           - apps-s-2vcpu-4gb
-          # Dedicated CPU - production-like performance
           - apps-d-1vcpu-0.5gb
           - apps-d-1vcpu-1gb
           - apps-d-1vcpu-2gb
@@ -78,50 +76,79 @@ on:
         required: false
         default: ''
       sync_interval:
-        description: 'Sync interval in seconds (leave empty to use config.yaml)'
+        description: 'Sync interval in seconds'
         required: false
         default: ''
       dev_start_command:
-        description: 'Startup command (leave empty to use config.yaml, typically: bash dev_startup.sh)'
+        description: 'Startup command (typically: bash dev_startup.sh)'
         required: false
         default: ''
       pre_deploy_command:
-        description: 'Pre-deploy command (runs before app starts on code change)'
+        description: 'Pre-deploy command (runs before app starts)'
         required: false
         default: ''
       post_deploy_command:
-        description: 'Post-deploy command (runs after app starts on code change)'
+        description: 'Post-deploy command (runs after app starts)'
         required: false
         default: ''
 
-# Common secrets - add more as needed
-# Users populate these in GitHub Secrets, workflow makes them available for injection
+# Common secrets - these are available for substitution in app specs
+# Add your secrets to GitHub Secrets, list them in config.yaml, they'll be injected
 env:
-  # DigitalOcean
-  DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
   # GitHub (for private repos)
   APP_GITHUB_TOKEN: ${{ secrets.APP_GITHUB_TOKEN }}
   # Database
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
   REDIS_URL: ${{ secrets.REDIS_URL }}
+  MONGODB_URI: ${{ secrets.MONGODB_URI }}
   # Auth
   AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
   NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+  NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
   JWT_SECRET: ${{ secrets.JWT_SECRET }}
+  SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
   # API Keys
   API_KEY: ${{ secrets.API_KEY }}
+  API_SECRET: ${{ secrets.API_SECRET }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+  # OAuth
+  GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+  GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+  GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
+  GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
   # Payment
   STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
   STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+  STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
   # Cloud
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  S3_BUCKET: ${{ secrets.S3_BUCKET }}
   # Email
+  SMTP_HOST: ${{ secrets.SMTP_HOST }}
+  SMTP_USER: ${{ secrets.SMTP_USER }}
   SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
   SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
   RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+  MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
+  # Analytics/Monitoring
+  SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+  SEGMENT_WRITE_KEY: ${{ secrets.SEGMENT_WRITE_KEY }}
+  # Custom (add up to 10 custom secrets)
+  CUSTOM_SECRET_1: ${{ secrets.CUSTOM_SECRET_1 }}
+  CUSTOM_SECRET_2: ${{ secrets.CUSTOM_SECRET_2 }}
+  CUSTOM_SECRET_3: ${{ secrets.CUSTOM_SECRET_3 }}
+  CUSTOM_SECRET_4: ${{ secrets.CUSTOM_SECRET_4 }}
+  CUSTOM_SECRET_5: ${{ secrets.CUSTOM_SECRET_5 }}
+  CUSTOM_SECRET_6: ${{ secrets.CUSTOM_SECRET_6 }}
+  CUSTOM_SECRET_7: ${{ secrets.CUSTOM_SECRET_7 }}
+  CUSTOM_SECRET_8: ${{ secrets.CUSTOM_SECRET_8 }}
+  CUSTOM_SECRET_9: ${{ secrets.CUSTOM_SECRET_9 }}
+  CUSTOM_SECRET_10: ${{ secrets.CUSTOM_SECRET_10 }}
 
 permissions:
   contents: read
@@ -134,9 +161,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install yq for YAML parsing
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
       - name: Read config and generate app spec
         id: generate
         run: |
+          CONFIG_FILE=".do/config.yaml"
+
+          # Check for custom app spec
+          if [ -f "$CONFIG_FILE" ]; then
+            CUSTOM_SPEC=$(yq '.app_spec_path // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
+            if [ -n "$CUSTOM_SPEC" ] && [ -f "$CUSTOM_SPEC" ]; then
+              echo "Using custom app spec: $CUSTOM_SPEC"
+              echo "use_custom_spec=true" >> $GITHUB_OUTPUT
+              echo "custom_spec_path=$CUSTOM_SPEC" >> $GITHUB_OUTPUT
+
+              # Get app name from custom spec for output
+              APP_NAME=$(yq '.name' "$CUSTOM_SPEC" 2>/dev/null || echo "custom-app")
+              echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+
+          echo "use_custom_spec=false" >> $GITHUB_OUTPUT
+
           # Default values
           DEFAULT_APP_NAME="hot-reload-dev"
           DEFAULT_RUNTIME="node"
@@ -147,26 +198,21 @@ jobs:
           DEFAULT_PRE_DEPLOY_TIMEOUT="300"
           DEFAULT_POST_DEPLOY_TIMEOUT="300"
 
-          # Try to read from config.yaml if it exists
-          CONFIG_FILE=".do/config.yaml"
+          # Read from config.yaml if it exists
           if [ -f "$CONFIG_FILE" ]; then
             echo "Reading configuration from $CONFIG_FILE"
-
-            # Parse YAML values (simple grep-based parsing)
-            CONFIG_APP_NAME=$(grep -E "^app_name:" "$CONFIG_FILE" | sed 's/app_name:[[:space:]]*//' | tr -d '"' || echo "")
-            CONFIG_RUNTIME=$(grep -E "^runtime:" "$CONFIG_FILE" | sed 's/runtime:[[:space:]]*//' | tr -d '"' || echo "")
-            CONFIG_REGION=$(grep -E "^region:" "$CONFIG_FILE" | sed 's/region:[[:space:]]*//' | tr -d '"' || echo "")
-            CONFIG_INSTANCE_SIZE=$(grep -E "^instance_size:" "$CONFIG_FILE" | sed 's/instance_size:[[:space:]]*//' | tr -d '"' || echo "")
-            CONFIG_BRANCH=$(grep -E "^branch:" "$CONFIG_FILE" | sed 's/branch:[[:space:]]*//' | tr -d '"' || echo "")
-            CONFIG_REPO_FOLDER=$(grep -E "^repo_folder:" "$CONFIG_FILE" | sed 's/repo_folder:[[:space:]]*//' | tr -d '"' || echo "")
-            CONFIG_SYNC_INTERVAL=$(grep -E "^sync_interval:" "$CONFIG_FILE" | sed 's/sync_interval:[[:space:]]*//' | tr -d '"' || echo "")
-            CONFIG_DEV_START_COMMAND=$(grep -E "^dev_start_command:" "$CONFIG_FILE" | sed 's/dev_start_command:[[:space:]]*//' | tr -d '"' || echo "")
-            CONFIG_PRE_DEPLOY_COMMAND=$(grep -E "^pre_deploy_command:" "$CONFIG_FILE" | sed 's/pre_deploy_command:[[:space:]]*//' | tr -d '"' || echo "")
-            CONFIG_PRE_DEPLOY_TIMEOUT=$(grep -E "^pre_deploy_timeout:" "$CONFIG_FILE" | sed 's/pre_deploy_timeout:[[:space:]]*//' | tr -d '"' || echo "")
-            CONFIG_POST_DEPLOY_COMMAND=$(grep -E "^post_deploy_command:" "$CONFIG_FILE" | sed 's/post_deploy_command:[[:space:]]*//' | tr -d '"' || echo "")
-            CONFIG_POST_DEPLOY_TIMEOUT=$(grep -E "^post_deploy_timeout:" "$CONFIG_FILE" | sed 's/post_deploy_timeout:[[:space:]]*//' | tr -d '"' || echo "")
-          else
-            echo "No config file found, using defaults"
+            CONFIG_APP_NAME=$(yq '.app_name // ""' "$CONFIG_FILE")
+            CONFIG_RUNTIME=$(yq '.runtime // ""' "$CONFIG_FILE")
+            CONFIG_REGION=$(yq '.region // ""' "$CONFIG_FILE")
+            CONFIG_INSTANCE_SIZE=$(yq '.instance_size // ""' "$CONFIG_FILE")
+            CONFIG_BRANCH=$(yq '.branch // ""' "$CONFIG_FILE")
+            CONFIG_REPO_FOLDER=$(yq '.repo_folder // ""' "$CONFIG_FILE")
+            CONFIG_SYNC_INTERVAL=$(yq '.sync_interval // ""' "$CONFIG_FILE")
+            CONFIG_DEV_START_COMMAND=$(yq '.dev_start_command // ""' "$CONFIG_FILE")
+            CONFIG_PRE_DEPLOY_COMMAND=$(yq '.pre_deploy_command // ""' "$CONFIG_FILE")
+            CONFIG_PRE_DEPLOY_TIMEOUT=$(yq '.pre_deploy_timeout // ""' "$CONFIG_FILE")
+            CONFIG_POST_DEPLOY_COMMAND=$(yq '.post_deploy_command // ""' "$CONFIG_FILE")
+            CONFIG_POST_DEPLOY_TIMEOUT=$(yq '.post_deploy_timeout // ""' "$CONFIG_FILE")
           fi
 
           # Priority: workflow input > config.yaml > default
@@ -219,13 +265,12 @@ jobs:
           echo "Repo Folder: ${REPO_FOLDER:-<root>}"
           echo "Sync Interval: $SYNC_INTERVAL"
           echo "Dev Start Command: $DEV_START_COMMAND"
-          echo "Pre-Deploy Command: ${PRE_DEPLOY_COMMAND:-<none>}"
-          echo "Post-Deploy Command: ${POST_DEPLOY_COMMAND:-<none>}"
-          echo "=============================="
 
           # Generate app spec
           mkdir -p .do
-          cat > .do/app-generated.yaml << EOF
+
+          # Start the app spec
+          cat > .do/app-generated.yaml << SPEC_START
           name: $APP_NAME
           region: $REGION
 
@@ -264,7 +309,6 @@ jobs:
                 - key: GITHUB_REPO_FOLDER
                   value: "$REPO_FOLDER"
                   scope: RUN_TIME
-
                 # Startup settings
                 - key: DEV_START_COMMAND
                   value: "$DEV_START_COMMAND"
@@ -275,7 +319,6 @@ jobs:
                 - key: WORKSPACE_PATH
                   value: "/workspaces/app"
                   scope: RUN_TIME
-
                 # Deploy jobs
                 - key: PRE_DEPLOY_COMMAND
                   value: "$PRE_DEPLOY_COMMAND"
@@ -289,82 +332,68 @@ jobs:
                 - key: POST_DEPLOY_TIMEOUT
                   value: "$POST_DEPLOY_TIMEOUT"
                   scope: RUN_TIME
+          SPEC_START
 
-                # === Application Secrets ===
-                # These are injected from GitHub Secrets
-                # Only non-empty secrets will be set in the app
-                - key: DATABASE_URL
-                  value: "\${DATABASE_URL}"
+          # Add environment variables from config.yaml (type: GENERAL)
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "Processing environment variables..."
+            ENV_COUNT=$(yq '.envs | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
+            if [ "$ENV_COUNT" != "0" ] && [ "$ENV_COUNT" != "null" ]; then
+              yq '.envs | to_entries | .[]' "$CONFIG_FILE" 2>/dev/null | while read -r line; do
+                KEY=$(echo "$line" | yq '.key')
+                VALUE=$(echo "$line" | yq '.value')
+                if [ -n "$KEY" ] && [ "$KEY" != "null" ]; then
+                  echo "  Adding env: $KEY"
+                  cat >> .do/app-generated.yaml << ENV_ENTRY
+                - key: $KEY
+                  value: "$VALUE"
+                  scope: RUN_TIME
+          ENV_ENTRY
+                fi
+              done
+            fi
+
+            # Add secrets from config.yaml (type: SECRET)
+            echo "Processing secrets..."
+            yq '.secrets[]' "$CONFIG_FILE" 2>/dev/null | while read -r SECRET_NAME; do
+              if [ -n "$SECRET_NAME" ] && [ "$SECRET_NAME" != "null" ]; then
+                echo "  Adding secret: $SECRET_NAME"
+                cat >> .do/app-generated.yaml << SECRET_ENTRY
+                - key: $SECRET_NAME
+                  value: "\${$SECRET_NAME}"
                   scope: RUN_TIME
                   type: SECRET
-                - key: REDIS_URL
-                  value: "\${REDIS_URL}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: AUTH_SECRET
-                  value: "\${AUTH_SECRET}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: NEXTAUTH_SECRET
-                  value: "\${NEXTAUTH_SECRET}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: JWT_SECRET
-                  value: "\${JWT_SECRET}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: API_KEY
-                  value: "\${API_KEY}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: OPENAI_API_KEY
-                  value: "\${OPENAI_API_KEY}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: ANTHROPIC_API_KEY
-                  value: "\${ANTHROPIC_API_KEY}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: STRIPE_SECRET_KEY
-                  value: "\${STRIPE_SECRET_KEY}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: STRIPE_WEBHOOK_SECRET
-                  value: "\${STRIPE_WEBHOOK_SECRET}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: AWS_ACCESS_KEY_ID
-                  value: "\${AWS_ACCESS_KEY_ID}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: AWS_SECRET_ACCESS_KEY
-                  value: "\${AWS_SECRET_ACCESS_KEY}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: SMTP_PASSWORD
-                  value: "\${SMTP_PASSWORD}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: SENDGRID_API_KEY
-                  value: "\${SENDGRID_API_KEY}"
-                  scope: RUN_TIME
-                  type: SECRET
-                - key: RESEND_API_KEY
-                  value: "\${RESEND_API_KEY}"
-                  scope: RUN_TIME
-                  type: SECRET
+          SECRET_ENTRY
+              fi
+            done
+          fi
+
+          # Close the spec
+          cat >> .do/app-generated.yaml << SPEC_END
 
           alerts:
             - rule: DEPLOYMENT_FAILED
             - rule: DOMAIN_FAILED
-          EOF
+          SPEC_END
 
-          echo "Generated app spec:"
+          echo ""
+          echo "=== Generated App Spec ==="
           cat .do/app-generated.yaml
 
-      - name: Deploy to DigitalOcean App Platform
+      - name: Deploy custom app spec
+        if: steps.generate.outputs.use_custom_spec == 'true'
         uses: digitalocean/app_action/deploy@v2
-        id: deploy
+        id: deploy-custom
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          app_spec_location: ${{ steps.generate.outputs.custom_spec_path }}
+          print_build_logs: true
+          print_deploy_logs: true
+
+      - name: Deploy generated app spec
+        if: steps.generate.outputs.use_custom_spec == 'false'
+        uses: digitalocean/app_action/deploy@v2
+        id: deploy-generated
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           app_spec_location: '.do/app-generated.yaml'
@@ -373,15 +402,23 @@ jobs:
 
       - name: Output deployment info
         run: |
-          echo "## Deployment Successful! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployment Successful!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**App Name:** ${{ steps.generate.outputs.app_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Runtime:** ${{ steps.generate.outputs.runtime }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Region:** ${{ steps.generate.outputs.region }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Instance Size:** ${{ steps.generate.outputs.instance_size }}" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.generate.outputs.use_custom_spec }}" == "true" ]; then
+            echo "**Mode:** Custom app spec" >> $GITHUB_STEP_SUMMARY
+            APP_OUTPUT='${{ steps.deploy-custom.outputs.app }}'
+          else
+            echo "**Runtime:** ${{ steps.generate.outputs.runtime }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Region:** ${{ steps.generate.outputs.region }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Instance Size:** ${{ steps.generate.outputs.instance_size }}" >> $GITHUB_STEP_SUMMARY
+            APP_OUTPUT='${{ steps.deploy-generated.outputs.app }}'
+          fi
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          APP_URL=$(echo '${{ steps.deploy.outputs.app }}' | jq -r '.live_url // empty')
-          APP_ID=$(echo '${{ steps.deploy.outputs.app }}' | jq -r '.id // empty')
+          APP_URL=$(echo "$APP_OUTPUT" | jq -r '.live_url // empty')
+          APP_ID=$(echo "$APP_OUTPUT" | jq -r '.id // empty')
           if [ -n "$APP_URL" ]; then
             echo "**Live URL:** $APP_URL" >> $GITHUB_STEP_SUMMARY
           fi
@@ -390,11 +427,8 @@ jobs:
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "1. Ensure you have \`dev_startup.sh\` in your repository" >> $GITHUB_STEP_SUMMARY
-          echo "   - See [examples/](examples/) for reference scripts" >> $GITHUB_STEP_SUMMARY
-          echo "2. Your code syncs from this repository every ${{ steps.generate.outputs.sync_interval || '15' }} seconds" >> $GITHUB_STEP_SUMMARY
-          echo "3. Debug with: \`sandbox exec $APP_ID \"tail -100 /tmp/app.log\"\`" >> $GITHUB_STEP_SUMMARY
+          echo "1. Ensure \`dev_startup.sh\` exists in your repo" >> $GITHUB_STEP_SUMMARY
+          echo "2. Debug with: \`sandbox exec $APP_ID \"tail -100 /tmp/app.log\"\`" >> $GITHUB_STEP_SUMMARY
 
   delete:
     if: ${{ inputs.action == 'delete' }}
@@ -403,17 +437,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
       - name: Determine app name
         id: appname
         run: |
           APP_NAME="${{ inputs.app_name }}"
+          CONFIG_FILE=".do/config.yaml"
 
-          # If not provided, try to read from config
-          if [ -z "$APP_NAME" ] && [ -f ".do/config.yaml" ]; then
-            APP_NAME=$(grep -E "^app_name:" ".do/config.yaml" | sed 's/app_name:[[:space:]]*//' | tr -d '"' || echo "")
+          if [ -z "$APP_NAME" ] && [ -f "$CONFIG_FILE" ]; then
+            # Check for custom spec first
+            CUSTOM_SPEC=$(yq '.app_spec_path // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
+            if [ -n "$CUSTOM_SPEC" ] && [ -f "$CUSTOM_SPEC" ]; then
+              APP_NAME=$(yq '.name' "$CUSTOM_SPEC" 2>/dev/null || echo "")
+            else
+              APP_NAME=$(yq '.app_name // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
+            fi
           fi
 
-          # Fallback to default
           [ -z "$APP_NAME" ] && APP_NAME="hot-reload-dev"
 
           echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
@@ -428,8 +472,6 @@ jobs:
 
       - name: Output deletion info
         run: |
-          echo "## App Deleted 🗑️" >> $GITHUB_STEP_SUMMARY
+          echo "## App Deleted" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**App Name:** ${{ steps.appname.outputs.app_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The app has been removed from DigitalOcean App Platform." >> $GITHUB_STEP_SUMMARY
