@@ -201,18 +201,9 @@ The health check runs on **port 9090** (separate from your app on port 8080). Th
 | `BUILD_TIME` | Only at build-time | NPM tokens |
 | `RUN_AND_BUILD_TIME` | Both | Shared configs |
 
-## Instance Sizes
+## App Platform Reference
 
-See [DigitalOcean Pricing](https://docs.digitalocean.com/products/app-platform/details/pricing/) for current prices.
-
-**Shared CPU (dev/testing):**
-- `apps-s-1vcpu-0.5gb` - Basic
-- `apps-s-1vcpu-1gb` - Starter
-- `apps-s-1vcpu-2gb` - Development (recommended)
-- `apps-s-2vcpu-4gb` - Professional
-
-**Dedicated CPU (production-like):**
-- `apps-d-1vcpu-0.5gb` through `apps-d-8vcpu-32gb`
+For app spec details (instance sizes, pricing, regions, component types), see https://docs.digitalocean.com/products/app-platform/
 
 ## Workflow Reference
 
@@ -247,33 +238,9 @@ gh workflow run deploy-app.yml -f action=delete
 - **Template repo URL**: If `GITHUB_REPO_URL` points at this template repo, you’ll only see the welcome page until you point to your app repo (or add your own `dev_startup.sh` here).
 - **Resource sizing**: Ensure your container has enough CPU/memory
 
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| App doesn't start | Check `dev_startup.sh` exists and is executable |
-| Health check fails | Ensure app listens on port 8080 (not 9090) |
-| Private repo access | Add `APP_GITHUB_TOKEN` to GitHub Secrets |
-| Workflow fails | Check `DIGITALOCEAN_ACCESS_TOKEN` is set |
-| npm install fails | Use larger instance (2GB+ for large projects) |
-
 ## Multi-component Applications
 
 DigitalOcean App Platform lets you run multiple components in one app. Each component can use this template image and its own `GITHUB_REPO_FOLDER` (for monorepos) and `DEV_START_COMMAND`. See an example with Bun + Node + load tester on the dev branch here: https://github.com/bikramkgupta/bun-node-comparison-harness/tree/dev
-
-## Files in This Repo
-
-```
-├── .github/workflows/
-│   ├── deploy-app.yml         # Deploy/delete apps via Actions
-│   └── build-and-push-images.yml
-├── .do/
-│   └── app.yaml               # Your app spec (edit this!)
-├── app-specs/                 # Example specs for each runtime
-├── examples/                  # Startup script examples
-├── scripts/                   # Container scripts
-└── Dockerfile                 # Multi-stage build
-```
 
 ## Contributing
 

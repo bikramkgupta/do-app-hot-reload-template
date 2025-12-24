@@ -6,7 +6,7 @@ Deploy hot-reload dev environments to DigitalOcean App Platform.
 
 1. Copy `.github/workflows/deploy-app.yml` and `.do/app.yaml` into the target repo.
 2. Copy an example `dev_startup.sh` from `examples/` into the repo root (review/edit for the framework).
-3. Add GitHub Secrets: `DIGITALOCEAN_ACCESS_TOKEN`, `APP_GITHUB_TOKEN` (private repos), and any app secrets.
+3. Add GitHub Secrets: `DIGITALOCEAN_ACCESS_TOKEN`, `APP_GITHUB_TOKEN` (private repos), and any app secrets. This is a one-time setup per repo (done by the repo owner).
 4. Run deploy:
 
 ```bash
@@ -133,29 +133,12 @@ See [pricing](https://docs.digitalocean.com/products/app-platform/details/pricin
 
 **AI agents can remotely control and troubleshoot the running container** using [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox).
 
-### Get App ID
+Follow the existing-app guide (component name required): https://github.com/bikramkgupta/do-app-sandbox/blob/main/docs/troubleshooting_existing_apps.md
 
 ```bash
-doctl apps list --format ID,Name --no-header
+# Get the component name(s) for your app
+doctl apps get <APP_ID> -o json | jq -r '.[0].spec.services[].name, .[0].spec.workers[].name, .[0].spec.jobs[].name'
 ```
-
-### Execute Commands in Container
-
-```bash
-# Run any command in the running container
-sandbox exec $APP_ID "ls -la /workspaces/app"
-sandbox exec $APP_ID "tail -100 /tmp/app.log"
-sandbox exec $APP_ID "env | grep DATABASE"
-```
-
-### Common Debugging Scenarios
-
-| What to Check | Command |
-|---------------|---------|
-| Is code synced? | `sandbox exec $APP_ID "cd /workspaces/app && git log -1"` |
-| What's running? | `sandbox exec $APP_ID "ps aux"` |
-| Check env loaded | `sandbox exec $APP_ID "env | grep DATABASE"` |
-| View app logs | `sandbox exec $APP_ID "cat /tmp/*.log"` |
 
 ---
 
@@ -181,9 +164,10 @@ doctl apps list --format Name,LiveURL
 
 ### Step 4: Debug if needed
 
+Use the do-app-sandbox guide above, or open a console:
+
 ```bash
-APP_ID=$(doctl apps list --format ID,Name --no-header | grep "my-dev-app" | awk '{print $1}')
-sandbox exec $APP_ID "tail -100 /tmp/app.log"
+doctl apps console <APP_ID> dev-workspace
 ```
 
 ### Step 5: Clean up when done
@@ -194,29 +178,6 @@ gh workflow run deploy-app.yml -f action=delete
 
 ---
 
-## Troubleshooting
+## References
 
-| Issue | Fix |
-|-------|-----|
-| Workflow fails | Check DIGITALOCEAN_ACCESS_TOKEN secret |
-| Private repo fails | Add APP_GITHUB_TOKEN secret |
-| App doesn't start | Check dev_startup.sh exists |
-| Health check fails | App must listen on port 8080 |
-
----
-
-## doctl Commands Cheat Sheet
-
-```bash
-# List apps
-doctl apps list
-
-# View logs
-doctl apps logs $APP_ID dev-workspace --type run
-
-# Force redeploy
-doctl apps create-deployment $APP_ID
-
-# Delete app
-doctl apps delete $APP_ID
-```
+- App Platform commands: https://github.com/bikramkgupta/do-app-sandbox/blob/main/App_Platform_Commands.md
