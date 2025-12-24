@@ -14,9 +14,11 @@ Pre-built Docker images with Node.js, Python, or Go ready to go. Deploy any code
 ## Aha in 5 minutes (80% case)
 
 1. Copy `.github/workflows/deploy-app.yml` and `.do/app.yaml` into your repo.
-2. Copy a `dev_startup.sh` from `examples/` into your repo root.
+2. Copy a `dev_startup.sh` from `examples/` into your repo root (review/edit for your framework).
 3. Add GitHub Secrets: `DIGITALOCEAN_ACCESS_TOKEN`, `APP_GITHUB_TOKEN` (private repos), and any app secrets.
 4. Run deploy: `gh workflow run deploy-app.yml -f action=deploy` (or via GitHub UI).
+
+Why this is useful: ~1 minute deploys and shell access for debugging even if the app fails.
 
 The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if the workflow runs in a different repo than the app (e.g., a central template) or you use GitHub Enterprise. For monorepos, set `GITHUB_REPO_FOLDER`.
 
@@ -32,6 +34,8 @@ Copy these files to your repository:
 ### Step 2: Edit `.do/app.yaml`
 
 Edit the app spec for your project. AI assistants (Claude, Cursor, Codex) can help you customize it.
+
+Secrets are stored in GitHub and substituted by the workflow. If an env var is not a secret, you can hardcode it here.
 
 ```yaml
 name: my-dev-app
@@ -84,6 +88,8 @@ gh workflow run deploy-app.yml -f action=delete
 
 Or use the GitHub UI: Actions → "Deploy to DigitalOcean App Platform" → Run workflow
 
+Monitor logs via the Actions run, or in DigitalOcean App Platform (or `doctl apps logs`).
+
 ## How Secrets Work
 
 1. Add secret to GitHub (e.g., `DATABASE_URL`)
@@ -96,6 +102,7 @@ Or use the GitHub UI: Actions → "Deploy to DigitalOcean App Platform" → Run 
 3. The workflow substitutes the value at deploy time
 
 The workflow has 40+ common secrets pre-wired. Just add them to GitHub Secrets and reference in your app spec.
+If your secret is not listed in `.github/workflows/deploy-app.yml`, replace `CUSTOM_SECRET_1..10` (or add new entries) and reference that name in your app spec.
 
 ## Create dev_startup.sh (before deploy)
 
@@ -249,6 +256,10 @@ gh workflow run deploy-app.yml -f action=delete
 | Private repo access | Add `APP_GITHUB_TOKEN` to GitHub Secrets |
 | Workflow fails | Check `DIGITALOCEAN_ACCESS_TOKEN` is set |
 | npm install fails | Use larger instance (2GB+ for large projects) |
+
+## Multi-component Applications
+
+DigitalOcean App Platform lets you run multiple components in one app. Each component can use this template image and its own `GITHUB_REPO_FOLDER` (for monorepos) and `DEV_START_COMMAND`. See an example with Bun + Node + load tester on the dev branch here: https://github.com/bikramkgupta/bun-node-comparison-harness/tree/dev
 
 ## Files in This Repo
 

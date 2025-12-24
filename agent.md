@@ -5,7 +5,7 @@ Deploy hot-reload dev environments to DigitalOcean App Platform.
 ## Aha in 5 minutes (80% case)
 
 1. Copy `.github/workflows/deploy-app.yml` and `.do/app.yaml` into the target repo.
-2. Copy an example `dev_startup.sh` from `examples/` into the repo root.
+2. Copy an example `dev_startup.sh` from `examples/` into the repo root (review/edit for the framework).
 3. Add GitHub Secrets: `DIGITALOCEAN_ACCESS_TOKEN`, `APP_GITHUB_TOKEN` (private repos), and any app secrets.
 4. Run deploy:
 
@@ -13,7 +13,11 @@ Deploy hot-reload dev environments to DigitalOcean App Platform.
 gh workflow run deploy-app.yml -f action=deploy
 ```
 
+Why this is useful: ~1 minute deploys and shell access for debugging even if the app fails.
+
 The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if the workflow runs in a different repo than the app (e.g., a central template) or you use GitHub Enterprise. For monorepos, set `GITHUB_REPO_FOLDER`.
+
+If `GITHUB_REPO_URL` points to this template repo, you will see the welcome page until you point it to your app repo or add your own `dev_startup.sh` here.
 
 ## Minimal edits to `.do/app.yaml`
 
@@ -58,6 +62,8 @@ Pre-wired secrets in workflow:
 - `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`
 - `STRIPE_SECRET_KEY`, `AWS_ACCESS_KEY_ID`, `SENTRY_DSN`
 - `CUSTOM_SECRET_1` through `CUSTOM_SECRET_10`
+
+If your secret is not listed in `.github/workflows/deploy-app.yml`, replace `CUSTOM_SECRET_1..10` (or add new entries) and reference that name in your app spec.
 
 ### Runtimes
 
