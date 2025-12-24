@@ -18,7 +18,7 @@ Pre-built Docker images with Node.js, Python, or Go ready to go. Deploy any code
 3. Add GitHub Secrets: `DIGITALOCEAN_ACCESS_TOKEN`, `APP_GITHUB_TOKEN` (private repos), and any app secrets.
 4. Run deploy: `gh workflow run deploy-app.yml -f action=deploy` (or via GitHub UI).
 
-The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if you want a different repo or use GitHub Enterprise. For monorepos, set `GITHUB_REPO_FOLDER`.
+The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if the workflow runs in a different repo than the app (e.g., a central template) or you use GitHub Enterprise. For monorepos, set `GITHUB_REPO_FOLDER`.
 
 ## Quick Start (details)
 
@@ -237,6 +237,7 @@ gh workflow run deploy-app.yml -f action=delete
 - **Port 8080**: Your app must listen on port 8080, bound to `0.0.0.0`
 - **Port 9090**: Reserved for health check—don't use in your app
 - **Hot reload**: Use a dev server that supports it (`npm run dev`, `uvicorn --reload`, etc.)
+- **Template repo URL**: If `GITHUB_REPO_URL` points at this template repo, you’ll only see the welcome page until you point to your app repo (or add your own `dev_startup.sh` here).
 - **Resource sizing**: Ensure your container has enough CPU/memory
 
 ## Troubleshooting

@@ -1,16 +1,14 @@
 #
 # DigitalOcean App Platform - Hot Reload Dev Environment
-# Next.js Application Template (Deploys in ~1 minute!)
+# Pre-built Node.js Image (Deploys in ~1 minute!)
 #
 # Usage:
-#   1. Copy this file to your repo as .do/app-hot-reload.yaml
-#   2. Update GITHUB_REPO_URL with your repository
-#   3. Add dev_startup.sh to your repo (see examples/)
-#   4. Deploy: doctl apps create --spec .do/app-hot-reload.yaml
+#   doctl apps create --spec app-specs/app-nextjs.yaml
 #
-# Prerequisites:
-#   - Add dev_startup.sh to your repo root (copy from examples/dev_startup_nextjs.sh)
-#   - For private repos: substitute your GITHUB_TOKEN before deploying
+# After deployment, configure your app in the DO Console:
+#   - Set GITHUB_REPO_URL to your repository (or keep ${GITHUB_REPO_URL} if deployed via GitHub Actions)
+#   - Set GITHUB_TOKEN if private repo (as secret)
+#   - Set DEV_START_COMMAND or add dev_startup.sh to your repo
 #
 
 name: my-nextjs-app
@@ -46,7 +44,7 @@ services:
     envs:
       # === Your Repository ===
       - key: GITHUB_REPO_URL
-        value: "https://github.com/YOUR_USERNAME/YOUR_REPO"
+        value: "${GITHUB_REPO_URL}"
         scope: RUN_TIME
 
       # For private repos, add your token here (or use envsubst)
@@ -57,6 +55,11 @@ services:
 
       # Branch to sync (leave empty for main/master)
       - key: GITHUB_BRANCH
+        value: ""
+        scope: RUN_TIME
+
+      # For monorepos: specify subfolder (e.g., "apps/web")
+      - key: GITHUB_REPO_FOLDER
         value: ""
         scope: RUN_TIME
 

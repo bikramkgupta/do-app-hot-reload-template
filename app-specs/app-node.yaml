@@ -3,13 +3,15 @@
 # Pre-built Node.js Image (Deploys in ~1 minute!)
 #
 # Usage:
-#   doctl apps create --spec .do/app-hot-reload.yaml
+#   doctl apps create --spec app-specs/app-node.yaml
 #
-# This configuration is for the sea-notes-saas-starter-kit application
-# configured to use the hot-reload-dev branch with monorepo structure
+# After deployment, configure your app in the DO Console:
+#   - Set GITHUB_REPO_URL to your repository (or keep ${GITHUB_REPO_URL} if deployed via GitHub Actions)
+#   - Set GITHUB_TOKEN if private repo (as secret)
+#   - Set DEV_START_COMMAND or add dev_startup.sh to your repo
 #
 
-name: sea-notes-hot-reload-dev-2
+name: hot-reload-dev
 region: syd1
 
 services:
@@ -23,7 +25,6 @@ services:
       tag: latest
 
     instance_count: 1
-    # Use 2GB instance for faster npm install (this app has many dependencies)
     instance_size_slug: apps-s-1vcpu-2gb
 
     # Application port (public HTTP traffic)
@@ -50,9 +51,9 @@ services:
 
     envs:
       # === Your Application Repository ===
-      # Repository URL for sea-notes-saas-starter-kit
+      # Set this to your GitHub repository URL (or keep ${GITHUB_REPO_URL} for GitHub Actions)
       - key: GITHUB_REPO_URL
-        value: "https://github.com/bikramkgupta/sea-notes-saas-starter-kit"
+        value: "${GITHUB_REPO_URL}"
         scope: RUN_TIME
 
       # For private repos, set your GitHub token (Personal Access Token with repo scope)
@@ -62,19 +63,18 @@ services:
         scope: RUN_TIME
         type: SECRET
 
-      # Branch to sync - using hot-reload-dev branch
+      # Branch to sync (leave empty for main/master)
       - key: GITHUB_BRANCH
-        value: "hot-reload-dev"
+        value: ""
         scope: RUN_TIME
 
-      # For monorepos: specify subfolder containing the application
-      # The application code is in the "application" subdirectory
+      # For monorepos: specify subfolder (e.g., "apps/web")
       - key: GITHUB_REPO_FOLDER
-        value: "application"
+        value: ""
         scope: RUN_TIME
 
       # === Application Startup ===
-      # Command to start your app - uses dev_startup.sh from the application directory
+      # Command to start your app (or add dev_startup.sh to your repo)
       - key: DEV_START_COMMAND
         value: "bash dev_startup.sh"
         scope: RUN_TIME
@@ -91,7 +91,6 @@ services:
 
       # === Deploy Jobs (Optional) ===
       # Commands run on git commit change (e.g., "npm run db:migrate")
-      # Leave empty for now - will configure later when database is added
       - key: PRE_DEPLOY_COMMAND
         value: ""
         scope: RUN_TIME
@@ -104,14 +103,6 @@ services:
       - key: POST_DEPLOY_TIMEOUT
         value: "300"
         scope: RUN_TIME
-
-      # === Application Environment Variables ===
-      # Note: Database and other integrations will be configured later
-      # For now, we'll let the app run without database connection
-      # You can add these via DO Console after initial deployment:
-      #   - AUTH_SECRET (required for NextAuth)
-      #   - DATABASE_URL (will be configured after database setup)
-      #   - Other variables as needed
 
 alerts:
   - rule: DEPLOYMENT_FAILED

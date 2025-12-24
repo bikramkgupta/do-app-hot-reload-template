@@ -13,7 +13,7 @@ Deploy hot-reload dev environments to DigitalOcean App Platform.
 gh workflow run deploy-app.yml -f action=deploy
 ```
 
-The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if you want a different repo or use GitHub Enterprise. For monorepos, set `GITHUB_REPO_FOLDER`.
+The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if the workflow runs in a different repo than the app (e.g., a central template) or you use GitHub Enterprise. For monorepos, set `GITHUB_REPO_FOLDER`.
 
 ## Minimal edits to `.do/app.yaml`
 
