@@ -9,6 +9,12 @@ echo "Dev Environment Starting..."
 echo "=========================================="
 echo ""
 
+# Marker file used to avoid doing an immediate duplicate sync in github-sync.sh
+# We only create it after a successful initial sync (and after we record the
+# current commit as already-processed for deploy jobs).
+STARTUP_SYNC_MARKER_FILE="/tmp/startup_sync_done"
+rm -f "$STARTUP_SYNC_MARKER_FILE" 2>/dev/null || true
+
 # Source bashrc to load all environment variables
 # This loads NVM, UV PATH, Go PATH, Rust, and other tools
 if [ -f /home/devcontainer/.bashrc ]; then
@@ -49,6 +55,8 @@ REPO_URL="${GITHUB_REPO_URL:-}"
 AUTH_TOKEN="${GITHUB_TOKEN:-}"
 WORKSPACE="${WORKSPACE_PATH:-/workspaces/app}"
 
+INITIAL_SYNC_OK=false
+
 if [ -n "$REPO_URL" ]; then
     # Inject auth token if provided
     if [ -n "$AUTH_TOKEN" ]; then
@@ -82,40 +90,14 @@ if [ -n "$REPO_URL" ]; then
         fi
     fi
     echo "✓ Initial sync completed"
+
+    if [ -d "$WORKSPACE/.git" ]; then
+        INITIAL_SYNC_OK=true
+    fi
 else
     echo "No GITHUB_REPO_URL configured. Skipping sync."
 fi
 echo ""
-
-# Create monorepo cache if needed (for apps in monorepo subfolders)
-# This must happen BEFORE DEV_START_COMMAND runs so dev_startup.sh is available
-if [ -n "${GITHUB_REPO_FOLDER:-}" ]; then
-    echo "=========================================="
-    echo "Preparing Monorepo Subfolder..."
-    echo "=========================================="
-    echo ""
-
-    # Source github-sync functions
-    source /usr/local/bin/github-sync.sh
-
-    # Create cache (idempotent - safe to call multiple times)
-    if create_or_update_monorepo_cache "$REPO_URL" "${GITHUB_REPO_FOLDER}" "${GITHUB_BRANCH:-}"; then
-        echo "✓ Monorepo cache ready: $MONOREPO_CACHE_DIR"
-
-        # Sync the subfolder to workspace so dev_startup.sh is available
-        WORKSPACE="${WORKSPACE_PATH:-/workspaces/app}"
-        if sync_monorepo_folder "$MONOREPO_CACHE_DIR" "${GITHUB_REPO_FOLDER}" "$WORKSPACE"; then
-            echo "✓ Monorepo subfolder synced to $WORKSPACE"
-        else
-            echo "ERROR: Failed to sync monorepo subfolder to workspace."
-            exit 1
-        fi
-    else
-        echo "ERROR: Failed to create monorepo cache."
-        exit 1
-    fi
-    echo ""
-fi
 
 # Execute PRE_DEPLOY job if configured (initial bootstrap)
 if [ -n "${PRE_DEPLOY_COMMAND:-}" ]; then
@@ -131,6 +113,13 @@ if [ -n "${PRE_DEPLOY_COMMAND:-}" ]; then
         exit 1  # Strict mode - must succeed
     fi
     echo ""
+fi
+
+# Record current commit as processed so github-sync doesn't immediately re-run
+# deploy jobs for the same commit (when startup already ran them).
+if [ "$INITIAL_SYNC_OK" = "true" ]; then
+    /usr/local/bin/job-manager.sh update_last_job_commit 2>/dev/null || true
+    touch "$STARTUP_SYNC_MARKER_FILE" 2>/dev/null || true
 fi
 
 # Start GitHub sync loop in background (continuous polling)
@@ -167,6 +156,9 @@ echo ""
 
 # Determine workspace path
 WORKSPACE="${WORKSPACE_PATH:-/workspaces/app}"
+WORKSPACE_REPO_FOLDER="${GITHUB_REPO_FOLDER:-}"
+WORKSPACE_REPO_FOLDER="${WORKSPACE_REPO_FOLDER%/}"
+APP_WORKDIR="$WORKSPACE"
 
 echo "=========================================="
 echo "Starting Application..."
@@ -181,13 +173,33 @@ if [ -z "${DEV_START_COMMAND:-}" ]; then
     elif [ -f "$WORKSPACE/startup.sh" ]; then
         DEV_START_COMMAND="bash startup.sh"
         echo "DEV_START_COMMAND not set; using startup.sh from repository."
+    elif [ -n "$WORKSPACE_REPO_FOLDER" ] && [ -f "$WORKSPACE/$WORKSPACE_REPO_FOLDER/dev_startup.sh" ]; then
+        APP_WORKDIR="$WORKSPACE/$WORKSPACE_REPO_FOLDER"
+        DEV_START_COMMAND="bash dev_startup.sh"
+        echo "DEV_START_COMMAND not set; using dev_startup.sh from legacy subfolder: $WORKSPACE_REPO_FOLDER"
+    elif [ -n "$WORKSPACE_REPO_FOLDER" ] && [ -f "$WORKSPACE/$WORKSPACE_REPO_FOLDER/startup.sh" ]; then
+        APP_WORKDIR="$WORKSPACE/$WORKSPACE_REPO_FOLDER"
+        DEV_START_COMMAND="bash startup.sh"
+        echo "DEV_START_COMMAND not set; using startup.sh from legacy subfolder: $WORKSPACE_REPO_FOLDER"
+    fi
+else
+    # Legacy compatibility: if a user kept the default command but the script lives
+    # under GITHUB_REPO_FOLDER, run it from that subfolder.
+    if [ -n "$WORKSPACE_REPO_FOLDER" ]; then
+        if [ "$DEV_START_COMMAND" = "bash dev_startup.sh" ] && [ ! -f "$WORKSPACE/dev_startup.sh" ] && [ -f "$WORKSPACE/$WORKSPACE_REPO_FOLDER/dev_startup.sh" ]; then
+            APP_WORKDIR="$WORKSPACE/$WORKSPACE_REPO_FOLDER"
+            echo "Legacy: running dev_startup.sh from subfolder $WORKSPACE_REPO_FOLDER"
+        elif [ "$DEV_START_COMMAND" = "bash startup.sh" ] && [ ! -f "$WORKSPACE/startup.sh" ] && [ -f "$WORKSPACE/$WORKSPACE_REPO_FOLDER/startup.sh" ]; then
+            APP_WORKDIR="$WORKSPACE/$WORKSPACE_REPO_FOLDER"
+            echo "Legacy: running startup.sh from subfolder $WORKSPACE_REPO_FOLDER"
+        fi
     fi
 fi
 
 if [ -n "${DEV_START_COMMAND:-}" ]; then
     echo "Executing DEV_START_COMMAND: $DEV_START_COMMAND"
     echo "Note: Welcome page server will be stopped when your app starts on port 8080"
-    cd "$WORKSPACE"
+    cd "$APP_WORKDIR"
     
     # Stop welcome page server (since app will use port 8080)
     if [ -n "${WELCOME_PID:-}" ]; then

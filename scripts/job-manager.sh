@@ -8,7 +8,7 @@ set -euo pipefail
 # Configuration from environment variables
 WORKSPACE="${WORKSPACE_PATH:-/workspaces/app}"
 REPO_URL="${GITHUB_REPO_URL:-}"
-REPO_FOLDER="${GITHUB_REPO_FOLDER:-}"
+REPO_FOLDER="${GITHUB_REPO_FOLDER:-}"  # legacy (undocumented)
 AUTH_TOKEN="${GITHUB_TOKEN:-}"
 
 # Job configuration
@@ -25,7 +25,7 @@ POST_DEPLOY_TIMEOUT="${POST_DEPLOY_TIMEOUT:-300}"
 # Tracking files
 LAST_JOB_COMMIT_FILE="/tmp/last_job_commit.txt"
 JOB_REPOS_DIR="/tmp/job-repos"
-MONOREPO_CACHE="/tmp/monorepo-cache"
+MONOREPO_CACHE="/tmp/monorepo-cache"  # legacy (undocumented)
 
 # Colors for output
 RED='\033[0;31m'
@@ -57,24 +57,15 @@ get_repo_hash() {
     echo "$1" | md5sum | cut -d' ' -f1
 }
 
-# Get current commit SHA from workspace or monorepo cache
+# Get current commit SHA from workspace (Mode 1).
+# Historically, monorepo mode used a separate cache clone; we keep this script
+# backward compatible, but the default behavior is to sync the full repo into
+# WORKSPACE_PATH and use that git SHA as the source of truth.
 get_current_commit_sha() {
     local sha=""
 
-    # Determine where to get SHA from
-    if [ -n "$REPO_FOLDER" ]; then
-        # Monorepo mode - use cache directory
-        local repo_hash=$(get_repo_hash "$REPO_URL")
-        local cache_dir="$MONOREPO_CACHE/$repo_hash"
-
-        if [ -d "$cache_dir/.git" ]; then
-            sha=$(cd "$cache_dir" && git rev-parse HEAD 2>/dev/null || echo "")
-        fi
-    else
-        # Regular mode - use workspace
-        if [ -d "$WORKSPACE/.git" ]; then
-            sha=$(cd "$WORKSPACE" && git rev-parse HEAD 2>/dev/null || echo "")
-        fi
+    if [ -d "$WORKSPACE/.git" ]; then
+        sha=$(cd "$WORKSPACE" && git rev-parse HEAD 2>/dev/null || echo "")
     fi
 
     echo "$sha"
@@ -229,33 +220,30 @@ execute_job() {
             job_exec_dir="$job_repo_dir/$job_folder"
         fi
 
-    # Pattern 2: Monorepo (main repo uses GITHUB_REPO_FOLDER)
-    elif [ -n "$REPO_FOLDER" ]; then
-        log_job "$job_type" "Using monorepo pattern (same repo, cache directory)"
-
-        local repo_hash=$(get_repo_hash "$REPO_URL")
-        local cache_dir="$MONOREPO_CACHE/$repo_hash"
-
-        if [ ! -d "$cache_dir" ]; then
-            log_job_error "$job_type" "Monorepo cache not found: $cache_dir"
-            return 1
-        fi
-
-        # Base directory includes REPO_FOLDER for monorepo pattern
-        job_exec_dir="$cache_dir/$REPO_FOLDER"
-
-        # Add job folder if specified
-        if [ -n "$job_folder" ]; then
-            job_exec_dir="$job_exec_dir/$job_folder"
-        fi
-
-    # Pattern 3: Same-repo (job_repo_url empty, regular mode)
+    # Pattern 2: Same-repo (default - full repo workspace)
     else
         log_job "$job_type" "Using same-repo pattern (main application workspace)"
 
         job_exec_dir="$WORKSPACE"
-        if [ -n "$job_folder" ]; then
-            job_exec_dir="$WORKSPACE/$job_folder"
+
+        # Legacy compatibility: if a repo folder is set, older deployments may
+        # expect jobs to run relative to that subfolder.
+        local repo_folder="${REPO_FOLDER%/}"
+        if [ -n "$repo_folder" ]; then
+            # If a job folder is configured and it's not already prefixed, prefix it.
+            if [ -n "$job_folder" ]; then
+                if [[ "$job_folder" == "$repo_folder" ]] || [[ "$job_folder" == "$repo_folder/"* ]]; then
+                    job_exec_dir="$WORKSPACE/$job_folder"
+                else
+                    job_exec_dir="$WORKSPACE/$repo_folder/$job_folder"
+                fi
+            else
+                job_exec_dir="$WORKSPACE/$repo_folder"
+            fi
+        else
+            if [ -n "$job_folder" ]; then
+                job_exec_dir="$WORKSPACE/$job_folder"
+            fi
         fi
     fi
 
