@@ -11,6 +11,12 @@ This is part of 3 projects to scale Agentic workflows with DigitalOcean App Plat
 
 Pre-built Docker images with Node.js, Python, or Go ready to go. Deploy any codebase to DO App Platform in ~1 minute.
 
+How it works: deploy pulls a pre-built image, starts a container, syncs your repo, and runs `dev_startup.sh`. After that, your repo syncs every ~15 seconds and your dev server handles hot reload, while the health server on port 9090 keeps the container alive for debugging.
+
+Deploy to DigitalOcean (uses `.do/deploy.template.yaml`):
+
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-hot-reload-template/tree/main)
+
 ## Aha in 5 minutes (80% case)
 
 1. Copy `.github/workflows/deploy-app.yml` and `.do/app.yaml` into your repo.
