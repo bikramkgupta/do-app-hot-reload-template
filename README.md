@@ -17,6 +17,8 @@ Deploy to DigitalOcean (uses `.do/deploy.template.yaml`):
 
 [![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-hot-reload-template/tree/main)
 
+If you use the Deploy button or Console, you will set env vars in App Platform. For AI assistants, follow the GitHub Actions flow below.
+
 ## Aha in 5 minutes (80% case)
 
 1. Copy `.github/workflows/deploy-app.yml` and `.do/app.yaml` into your repo.

@@ -253,19 +253,23 @@ const welcomePageHTML = `<!DOCTYPE html>
 
         {{if eq .RepoURL "not set"}}
         <div class="section">
-            <h2>Setup (DO Console)</h2>
-            <p style="margin-bottom: 12px;">Set these 2 environment variables in App Platform Console:</p>
+            <h2>Recommended: GitHub Actions (AI-friendly)</h2>
+            <p style="margin-bottom: 12px;">Copy the workflow and app spec into your repo, add GitHub Secrets, then run the workflow. Repo URL is auto-filled.</p>
+            <div class="code-block">
+gh workflow run deploy-app.yml -f action=deploy
+            </div>
+            <p class="hint" style="margin-top: 8px;">Full steps: https://github.com/bikramkgupta/do-app-hot-reload-template</p>
+        </div>
+
+        <div class="section">
+            <h2>Setup (Console or CLI)</h2>
+            <p style="margin-bottom: 12px;">Set these environment variables in App Platform (Console or app spec):</p>
             <div class="code-block">
 <span class="env-var">GITHUB_REPO_URL</span> = <span class="value">https://github.com/you/your-app</span>
 <span class="env-var">DEV_START_COMMAND</span> = <span class="value">bash dev_startup.sh</span>
 <span class="comment"># For private repos, also set GITHUB_TOKEN (as secret)</span>
             </div>
-            <p class="hint" style="margin-top: 8px;">That's all the container needs. Redeploy after setting these.</p>
-        </div>
-
-        <div class="info">
-            <strong>Your app config goes in your .env file, not here.</strong>
-            <p style="margin-top: 6px;">DATABASE_URL, API_KEY, etc. → put in <code>.env</code> in your repo. Changes sync in 15 seconds without redeploy.</p>
+            <p class="hint" style="margin-top: 8px;">If you used the Deploy button or Console, redeploy after setting these.</p>
         </div>
         {{else}}
         <div class="success">
@@ -274,43 +278,40 @@ const welcomePageHTML = `<!DOCTYPE html>
             <p style="margin-top: 8px;">Add <code>dev_startup.sh</code> to your repo or set <code>DEV_START_COMMAND</code>.</p>
             {{end}}
         </div>
+        {{end}}
 
         <div class="info">
-            <strong>App config belongs in your .env file</strong>
-            <p style="margin-top: 6px;">DATABASE_URL, API keys, etc. → <code>.env</code> in your repo. Push changes, they sync automatically. No redeploy needed.</p>
+            <strong>Where to store secrets</strong>
+            <p style="margin-top: 6px;">GitHub Actions: use GitHub Secrets and reference <code>${SECRET_NAME}</code> in your app spec. Console/CLI: use App Platform env vars. Do not commit secrets to the repo.</p>
         </div>
-        {{end}}
 
         <div class="section">
             <h2>Example dev_startup.sh</h2>
             <div class="code-block">
 <span class="comment">#!/bin/bash</span>
-<span class="comment"># Load your app config from .env</span>
-<span class="env-var">if</span> [ -f .env ]; <span class="env-var">then</span>
-    <span class="env-var">export</span> $(cat .env | grep -v '^#' | xargs)
-<span class="env-var">fi</span>
+set -e
 
 npm install
-npm run dev -- --hostname 0.0.0.0 --port 8080
+exec npm run dev -- --hostname 0.0.0.0 --port 8080
             </div>
-            <p class="hint">Your .env file: DATABASE_URL, API_KEY, etc. Git push → syncs in 15s.</p>
+            <p class="hint">Push code → syncs every {{.SyncInterval}} seconds. Your dev server handles hot reload.</p>
         </div>
 
         <div class="section">
             <h2>The Philosophy</h2>
             <div class="step">
-                <strong>Container config (DO Console):</strong> Where's your code? How to start it?
+                <strong>Container config (App Platform):</strong> Where is your code? How to start it?
                 <div class="code-block" style="margin-top:8px">GITHUB_REPO_URL, DEV_START_COMMAND</div>
             </div>
             <div class="step">
-                <strong>App config (your .env file):</strong> Everything else
+                <strong>App secrets (Actions or Console):</strong> Store in GitHub Secrets or App Platform env vars
                 <div class="code-block" style="margin-top:8px">DATABASE_URL, API_KEY, STRIPE_SECRET, etc.</div>
             </div>
-            <p class="hint" style="margin-top: 12px;">Change .env → git push → syncs in 15 seconds. No DO redeploy needed!</p>
+            <p class="hint" style="margin-top: 12px;">Git push → syncs in {{.SyncInterval}} seconds. No redeploy needed for code changes.</p>
         </div>
 
         <div class="footer">
-            <p>Container started: {{.Timestamp}} | Health: <code>/health</code> port 8080</p>
+            <p>Container started: {{.Timestamp}} | Health: <code>/dev_health</code> port 9090</p>
         </div>
     </div>
 </body>
