@@ -6,6 +6,9 @@
 # - Handles npm install with legacy-peer-deps for compatibility
 # - Auto-detects package.json changes and reinstalls
 # - Falls back to hard rebuild if install fails
+# - Runs the dev server (best for hot reload / iteration)
+# - Tip: for faster dev builds, set your package.json dev script to use Turbopack:
+#     "dev": "next dev --turbopack"
 #
 
 set -e
