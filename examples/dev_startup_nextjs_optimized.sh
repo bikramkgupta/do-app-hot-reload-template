@@ -84,18 +84,20 @@ build_if_needed() {
 
 start_server() {
     echo "Starting Next.js production server..."
-    npm run start -- --hostname 0.0.0.0 --port 8080 &
-    echo $! > .server_pid
+    # Start in its own process group so stop_server can reliably kill the
+    # process that actually owns port 8080 (npm/next may spawn children).
+    setsid npm run start -- --hostname 0.0.0.0 --port 8080 >/tmp/nextjs-start.log 2>&1 &
+    echo $! > .server_pgid
 }
 
 stop_server() {
-    if [ -f ".server_pid" ]; then
-        local pid
-        pid=$(cat .server_pid 2>/dev/null || echo "")
-        if [ -n "$pid" ]; then
-            kill "$pid" 2>/dev/null || true
+    if [ -f ".server_pgid" ]; then
+        local pgid
+        pgid=$(cat .server_pgid 2>/dev/null || echo "")
+        if [ -n "$pgid" ]; then
+            kill -- "-$pgid" 2>/dev/null || true
         fi
-        rm -f .server_pid
+        rm -f .server_pgid
     fi
 }
 
@@ -116,11 +118,11 @@ while true; do
     sleep "$SYNC_INTERVAL"
 
     # Restart if server died
-    if [ -f ".server_pid" ]; then
-        pid=$(cat .server_pid 2>/dev/null || echo "")
+    if [ -f ".server_pgid" ]; then
+        pid=$(cat .server_pgid 2>/dev/null || echo "")
         if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
             echo "Production server exited; restarting..."
-            rm -f .server_pid
+            rm -f .server_pgid
             start_server
         fi
     fi
