@@ -39,6 +39,10 @@ Copy these files to your repository:
 - `.do/app.yaml` - Your app spec (edit this!)
 - `dev_startup.sh` - Your startup script
 
+> **Two app specs available:**
+> - `.do/app.yaml` - For GitHub Actions workflow (uses `${SECRET_NAME}` substitution)
+> - `.do/app-cli.yaml` - For direct CLI usage: `doctl apps create --spec .do/app-cli.yaml`
+
 ### Step 2: Edit `.do/app.yaml`
 
 Edit the app spec for your project. AI assistants (Claude, Cursor, Codex) can help you customize it.
