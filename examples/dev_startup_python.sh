@@ -4,11 +4,11 @@
 #
 # Features:
 # - Uses uv for fast dependency management (falls back to pip)
-# - Auto-detects requirements changes and reinstalls
+# - Auto-detects requirements changes and reinstalls (polls every GITHUB_SYNC_INTERVAL seconds)
 # - Runs uvicorn with --reload for hot reload
 #
 
-set -e
+set -euo pipefail
 
 HASH_FILE=".deps_hash"
 
@@ -46,8 +46,55 @@ if [ "$CURRENT_HASH" != "$STORED_HASH" ]; then
     install_deps
 fi
 
-# Start the dev server
-# --reload enables hot reload
-# --host 0.0.0.0 makes it accessible from outside the container
-# --port 8080 is required for DO App Platform
-exec uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+start_server() {
+    echo "Starting uvicorn dev server..."
+    uvicorn main:app --host 0.0.0.0 --port 8080 --reload &
+    echo $! > .server_pid
+}
+
+stop_server() {
+    if [ -f ".server_pid" ]; then
+        local pid
+        pid=$(cat .server_pid 2>/dev/null || echo "")
+        if [ -n "$pid" ]; then
+            kill "$pid" 2>/dev/null || true
+        fi
+        rm -f .server_pid
+    fi
+}
+
+SYNC_INTERVAL="${GITHUB_SYNC_INTERVAL:-15}"
+SYNC_INTERVAL="${SYNC_INTERVAL%.*}"
+if [ -z "$SYNC_INTERVAL" ]; then
+    SYNC_INTERVAL="15"
+fi
+
+trap 'stop_server; exit 0' INT TERM
+
+start_server
+
+# Loop forever:
+# - If deps file changes: reinstall + restart server
+# - If server dies: restart it
+while true; do
+    sleep "$SYNC_INTERVAL"
+
+    # Restart if server died
+    if [ -f ".server_pid" ]; then
+        pid=$(cat .server_pid 2>/dev/null || echo "")
+        if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
+            echo "Uvicorn exited; restarting..."
+            rm -f .server_pid
+            start_server
+        fi
+    fi
+
+    CURRENT_HASH=$(sha256sum "$DEPS_FILE" 2>/dev/null | cut -d' ' -f1 || echo "none")
+    STORED_HASH=$(cat "$HASH_FILE" 2>/dev/null || echo "")
+    if [ "$CURRENT_HASH" != "$STORED_HASH" ]; then
+        echo "$DEPS_FILE changed; reinstalling deps and restarting server..."
+        install_deps
+        stop_server
+        start_server
+    fi
+done
