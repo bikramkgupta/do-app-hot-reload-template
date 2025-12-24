@@ -15,7 +15,7 @@
 #
 
 name: my-dev-app
-region: syd1
+region: syd
 
 services:
   - name: dev-workspace

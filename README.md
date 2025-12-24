@@ -45,7 +45,7 @@ Secrets are stored in GitHub and substituted by the workflow. If an env var is n
 
 ```yaml
 name: my-dev-app
-region: syd1
+region: syd
 
 services:
   - name: dev-workspace

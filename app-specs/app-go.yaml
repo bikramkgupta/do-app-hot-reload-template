@@ -7,7 +7,7 @@
 #
 
 name: hot-reload-dev
-region: syd1
+region: syd
 
 services:
   - name: dev-workspace

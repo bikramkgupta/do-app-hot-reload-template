@@ -76,19 +76,9 @@ If your secret is not listed in `.github/workflows/deploy-app.yml`, replace `CUS
 | `hot-reload-ruby` | Rails, Sinatra |
 | `hot-reload-full` | Multi-language |
 
-### Regions
+### App Platform Reference
 
-| Code | Location |
-|------|----------|
-| `nyc1`, `nyc3` | New York |
-| `sfo3` | San Francisco |
-| `ams3` | Amsterdam |
-| `sgp1` | Singapore |
-| `lon1` | London |
-| `fra1` | Frankfurt |
-| `tor1` | Toronto |
-| `blr1` | Bangalore |
-| `syd1` | Sydney |
+For regions, sizes, and app spec details, see https://docs.digitalocean.com/products/app-platform/
 
 ### Instance Sizes
 
