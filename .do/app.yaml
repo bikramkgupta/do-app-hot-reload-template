@@ -8,6 +8,9 @@
 # Add the secret to GitHub (Settings → Secrets → Actions)
 # The workflow will substitute values at deploy time
 #
+# Note: GITHUB_REPO_URL is auto-filled by the workflow. If you deploy
+# without the workflow, replace it with your repo URL.
+#
 # See app-specs/ folder for more examples (bun, python, go, ruby, full)
 #
 
@@ -41,7 +44,7 @@ services:
     envs:
       # === Repository Settings ===
       - key: GITHUB_REPO_URL
-        value: "https://github.com/YOUR_USERNAME/YOUR_REPO"
+        value: "${GITHUB_REPO_URL}"
         scope: RUN_TIME
 
       # For private repos: add APP_GITHUB_TOKEN to GitHub Secrets

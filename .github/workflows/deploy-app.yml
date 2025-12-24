@@ -22,6 +22,8 @@ on:
 env:
   # GitHub (for private repos)
   APP_GITHUB_TOKEN: ${{ secrets.APP_GITHUB_TOKEN }}
+  # Auto-populate the repo URL used by the dev container
+  GITHUB_REPO_URL: https://github.com/${{ github.repository }}
   # Database
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
   REDIS_URL: ${{ secrets.REDIS_URL }}
@@ -91,7 +93,7 @@ jobs:
           if [ ! -f "${{ inputs.app_spec_path }}" ]; then
             echo "Error: App spec not found at ${{ inputs.app_spec_path }}"
             echo ""
-            echo "Create an app spec file. See .do/app-specs/ for examples."
+            echo "Create an app spec file. See app-specs/ for examples."
             exit 1
           fi
           echo "Using app spec: ${{ inputs.app_spec_path }}"

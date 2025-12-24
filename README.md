@@ -11,7 +11,16 @@ This is part of 3 projects to scale Agentic workflows with DigitalOcean App Plat
 
 Pre-built Docker images with Node.js, Python, or Go ready to go. Deploy any codebase to DO App Platform in ~1 minute.
 
-## Quick Start
+## Aha in 5 minutes (80% case)
+
+1. Copy `.github/workflows/deploy-app.yml` and `.do/app.yaml` into your repo.
+2. Copy a `dev_startup.sh` from `examples/` into your repo root.
+3. Add GitHub Secrets: `DIGITALOCEAN_ACCESS_TOKEN`, `APP_GITHUB_TOKEN` (private repos), and any app secrets.
+4. Run deploy: `gh workflow run deploy-app.yml -f action=deploy` (or via GitHub UI).
+
+The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if you want a different repo or use GitHub Enterprise. For monorepos, set `GITHUB_REPO_FOLDER`.
+
+## Quick Start (details)
 
 ### Step 1: Copy Files to Your Repo
 
@@ -41,7 +50,7 @@ services:
 
     envs:
       - key: GITHUB_REPO_URL
-        value: "https://github.com/YOUR_USERNAME/YOUR_REPO"
+        value: "${GITHUB_REPO_URL}"  # auto-filled by the workflow
         scope: RUN_TIME
 
       # For secrets: use ${SECRET_NAME} syntax
@@ -88,7 +97,7 @@ Or use the GitHub UI: Actions → "Deploy to DigitalOcean App Platform" → Run 
 
 The workflow has 40+ common secrets pre-wired. Just add them to GitHub Secrets and reference in your app spec.
 
-## After Deployment: Create dev_startup.sh
+## Create dev_startup.sh (before deploy)
 
 Your repository needs a `dev_startup.sh` script that handles dependency installation and starts your dev server.
 
@@ -165,7 +174,7 @@ The health check runs on **port 9090** (separate from your app on port 8080). Th
 
 | Variable | Description |
 |----------|-------------|
-| `GITHUB_REPO_URL` | Your application repository |
+| `GITHUB_REPO_URL` | Auto-filled by the workflow (current repo); override if deploying a different repo |
 | `DEV_START_COMMAND` | Startup command (default: `bash dev_startup.sh`) |
 
 ### Optional

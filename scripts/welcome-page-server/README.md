@@ -2,6 +2,8 @@
 
 Simple Go HTTP server that serves an informative welcome page when no application is connected to the dev container template.
 
+Not required for the quick start; included for transparency and debugging.
+
 ## Purpose
 
 This welcome page server serves a helpful HTML page on port 8080 (the main application port) to guide users on how to connect their application to the template. It shows:
@@ -101,4 +103,3 @@ Both servers can run simultaneously, allowing the container to:
 - Pass health checks (via health server on 9090)
 - Show helpful instructions (via welcome page on 8080)
 - Automatically transition to user's app when configured
-
