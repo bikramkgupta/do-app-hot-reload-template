@@ -4,7 +4,7 @@
 #
 # Features:
 # - Handles npm install with legacy-peer-deps for compatibility
-# - Auto-detects package.json changes and reinstalls
+# - Auto-detects package.json changes and reinstalls (polls every GITHUB_SYNC_INTERVAL seconds)
 # - Falls back to hard rebuild if install fails
 # - Runs the dev server (best for hot reload / iteration)
 # - Tip: for faster dev builds, set your package.json dev script to use Turbopack:
@@ -36,7 +36,56 @@ if [ "$CURRENT_HASH" != "$STORED_HASH" ] || [ ! -d "node_modules" ]; then
     install_deps
 fi
 
-# Start the dev server
-# --hostname 0.0.0.0 makes it accessible from outside the container
-# --port 8080 is required for DO App Platform
-exec npm run dev -- --hostname 0.0.0.0 --port 8080
+start_server() {
+    echo "Starting Next.js dev server..."
+    npm run dev -- --hostname 0.0.0.0 --port 8080 &
+    echo $! > .server_pid
+}
+
+stop_server() {
+    if [ -f ".server_pid" ]; then
+        local pid
+        pid=$(cat .server_pid 2>/dev/null || echo "")
+        if [ -n "$pid" ]; then
+            kill "$pid" 2>/dev/null || true
+        fi
+        rm -f .server_pid
+    fi
+}
+
+SYNC_INTERVAL="${GITHUB_SYNC_INTERVAL:-15}"
+SYNC_INTERVAL="${SYNC_INTERVAL%.*}"
+if [ -z "$SYNC_INTERVAL" ]; then
+    SYNC_INTERVAL="15"
+fi
+
+trap 'stop_server; exit 0' INT TERM
+
+start_server
+
+# Loop forever:
+# - If package.json changes: npm install + restart dev server
+# - If server dies: restart it
+while true; do
+    sleep "$SYNC_INTERVAL"
+
+    # Restart if dev server died
+    if [ -f ".server_pid" ]; then
+        pid=$(cat .server_pid 2>/dev/null || echo "")
+        if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
+            echo "Dev server exited; restarting..."
+            rm -f .server_pid
+            start_server
+        fi
+    fi
+
+    # Check for dependency changes
+    CURRENT_HASH=$(sha256sum package.json 2>/dev/null | cut -d' ' -f1 || echo "none")
+    STORED_HASH=$(cat "$HASH_FILE" 2>/dev/null || echo "")
+    if [ "$CURRENT_HASH" != "$STORED_HASH" ]; then
+        echo "package.json changed; installing deps and restarting dev server..."
+        install_deps
+        stop_server
+        start_server
+    fi
+done
