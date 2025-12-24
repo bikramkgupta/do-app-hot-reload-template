@@ -398,8 +398,15 @@ main() {
         log_info "  - Branch: ${REPO_BRANCH:-auto-detect}"
     fi
 
-    # Initial sync (always runs on startup)
-    sync_repo
+    # Initial sync
+    # If startup.sh successfully performed the initial sync, it will create this marker.
+    # In that case, avoid doing an immediate duplicate sync here.
+    local startup_marker="/tmp/startup_sync_done"
+    if [ -f "$startup_marker" ]; then
+        log_info "Startup sync marker detected ($startup_marker). Skipping immediate initial sync."
+    else
+        sync_repo
+    fi
 
     # Continuous sync loop
     while true; do

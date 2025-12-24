@@ -9,6 +9,11 @@ echo "Dev Environment Starting..."
 echo "=========================================="
 echo ""
 
+# Marker file used to avoid doing an immediate duplicate sync in github-sync.sh
+# We only create it after a successful initial sync.
+STARTUP_SYNC_MARKER_FILE="/tmp/startup_sync_done"
+rm -f "$STARTUP_SYNC_MARKER_FILE" 2>/dev/null || true
+
 # Source bashrc to load all environment variables
 # This loads NVM, UV PATH, Go PATH, Rust, and other tools
 if [ -f /home/devcontainer/.bashrc ]; then
@@ -50,72 +55,89 @@ AUTH_TOKEN="${GITHUB_TOKEN:-}"
 WORKSPACE="${WORKSPACE_PATH:-/workspaces/app}"
 
 if [ -n "$REPO_URL" ]; then
-    # Inject auth token if provided
-    if [ -n "$AUTH_TOKEN" ]; then
-        if [[ "$REPO_URL" == https://* ]]; then
-            CLEAN_URL="${REPO_URL#https://}"
-            CLEAN_URL="${CLEAN_URL#*@}"
-            REPO_URL_WITH_AUTH="https://${AUTH_TOKEN}@${CLEAN_URL}"
+    INITIAL_SYNC_OK=false
+
+    # ========================================
+    # MONOREPO MODE (subfolder only)
+    # ========================================
+    if [ -n "${GITHUB_REPO_FOLDER:-}" ]; then
+        echo "Monorepo mode configured (GITHUB_REPO_FOLDER=${GITHUB_REPO_FOLDER})."
+        echo "Skipping workspace git clone; using monorepo cache + rsync to populate workspace."
+        echo ""
+
+        # Source github-sync functions (create_or_update_monorepo_cache + sync_monorepo_folder)
+        source /usr/local/bin/github-sync.sh
+
+        # Create/update cache (idempotent)
+        if create_or_update_monorepo_cache "$REPO_URL" "${GITHUB_REPO_FOLDER}" "${GITHUB_BRANCH:-}"; then
+            echo "✓ Monorepo cache ready: $MONOREPO_CACHE_DIR"
+
+            # Sync the subfolder to workspace so dev_startup.sh is available
+            WORKSPACE="${WORKSPACE_PATH:-/workspaces/app}"
+            if sync_monorepo_folder "$MONOREPO_CACHE_DIR" "${GITHUB_REPO_FOLDER}" "$WORKSPACE"; then
+                echo "✓ Monorepo subfolder synced to $WORKSPACE"
+                INITIAL_SYNC_OK=true
+            else
+                echo "ERROR: Failed to sync monorepo subfolder to workspace."
+                exit 1
+            fi
+        else
+            echo "ERROR: Failed to create monorepo cache."
+            exit 1
+        fi
+
+        echo "✓ Initial sync completed (monorepo mode)"
+
+    # ========================================
+    # REGULAR MODE (single repository)
+    # ========================================
+    else
+        # Inject auth token if provided
+        if [ -n "$AUTH_TOKEN" ]; then
+            if [[ "$REPO_URL" == https://* ]]; then
+                CLEAN_URL="${REPO_URL#https://}"
+                CLEAN_URL="${CLEAN_URL#*@}"
+                REPO_URL_WITH_AUTH="https://${AUTH_TOKEN}@${CLEAN_URL}"
+            else
+                REPO_URL_WITH_AUTH="$REPO_URL"
+            fi
         else
             REPO_URL_WITH_AUTH="$REPO_URL"
         fi
-    else
-        REPO_URL_WITH_AUTH="$REPO_URL"
+
+        if [ -d "$WORKSPACE/.git" ]; then
+            echo "Repository exists. Pulling latest changes..."
+            cd "$WORKSPACE"
+            git fetch origin 2>&1 || true
+            CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+            git pull origin "$CURRENT_BRANCH" 2>&1 || echo "Warning: Pull failed, continuing..."
+        else
+            echo "Cloning repository..."
+            mkdir -p "$WORKSPACE"
+            if [ "$(ls -A "$WORKSPACE" 2>/dev/null)" ]; then
+                rm -rf "${WORKSPACE:?}/"* "${WORKSPACE:?}/".[!.]* "${WORKSPACE:?}/"..?* 2>/dev/null || true
+            fi
+            git clone "$REPO_URL_WITH_AUTH" "$WORKSPACE" 2>&1 || echo "Warning: Clone failed, continuing..."
+            if [ -n "$AUTH_TOKEN" ] && [ -d "$WORKSPACE/.git" ]; then
+                cd "$WORKSPACE"
+                git remote set-url origin "$REPO_URL_WITH_AUTH" 2>/dev/null || true
+            fi
+        fi
+
+        if [ -d "$WORKSPACE/.git" ]; then
+            INITIAL_SYNC_OK=true
+        fi
+
+        echo "✓ Initial sync completed"
     fi
 
-    if [ -d "$WORKSPACE/.git" ]; then
-        echo "Repository exists. Pulling latest changes..."
-        cd "$WORKSPACE"
-        git fetch origin 2>&1 || true
-        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-        git pull origin "$CURRENT_BRANCH" 2>&1 || echo "Warning: Pull failed, continuing..."
-    else
-        echo "Cloning repository..."
-        mkdir -p "$WORKSPACE"
-        if [ "$(ls -A "$WORKSPACE" 2>/dev/null)" ]; then
-            rm -rf "${WORKSPACE:?}/"* "${WORKSPACE:?}/".[!.]* "${WORKSPACE:?}/"..?* 2>/dev/null || true
-        fi
-        git clone "$REPO_URL_WITH_AUTH" "$WORKSPACE" 2>&1 || echo "Warning: Clone failed, continuing..."
-        if [ -n "$AUTH_TOKEN" ] && [ -d "$WORKSPACE/.git" ]; then
-            cd "$WORKSPACE"
-            git remote set-url origin "$REPO_URL_WITH_AUTH" 2>/dev/null || true
-        fi
+    if [ "$INITIAL_SYNC_OK" = "true" ]; then
+        touch "$STARTUP_SYNC_MARKER_FILE" 2>/dev/null || true
     fi
-    echo "✓ Initial sync completed"
 else
     echo "No GITHUB_REPO_URL configured. Skipping sync."
 fi
 echo ""
-
-# Create monorepo cache if needed (for apps in monorepo subfolders)
-# This must happen BEFORE DEV_START_COMMAND runs so dev_startup.sh is available
-if [ -n "${GITHUB_REPO_FOLDER:-}" ]; then
-    echo "=========================================="
-    echo "Preparing Monorepo Subfolder..."
-    echo "=========================================="
-    echo ""
-
-    # Source github-sync functions
-    source /usr/local/bin/github-sync.sh
-
-    # Create cache (idempotent - safe to call multiple times)
-    if create_or_update_monorepo_cache "$REPO_URL" "${GITHUB_REPO_FOLDER}" "${GITHUB_BRANCH:-}"; then
-        echo "✓ Monorepo cache ready: $MONOREPO_CACHE_DIR"
-
-        # Sync the subfolder to workspace so dev_startup.sh is available
-        WORKSPACE="${WORKSPACE_PATH:-/workspaces/app}"
-        if sync_monorepo_folder "$MONOREPO_CACHE_DIR" "${GITHUB_REPO_FOLDER}" "$WORKSPACE"; then
-            echo "✓ Monorepo subfolder synced to $WORKSPACE"
-        else
-            echo "ERROR: Failed to sync monorepo subfolder to workspace."
-            exit 1
-        fi
-    else
-        echo "ERROR: Failed to create monorepo cache."
-        exit 1
-    fi
-    echo ""
-fi
 
 # Execute PRE_DEPLOY job if configured (initial bootstrap)
 if [ -n "${PRE_DEPLOY_COMMAND:-}" ]; then

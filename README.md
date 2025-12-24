@@ -13,6 +13,8 @@ Pre-built Docker images with Node.js, Python, or Go ready to go. Deploy any code
 
 How it works: deploy pulls a pre-built image, starts a container, syncs your repo, and runs `dev_startup.sh`. After that, your repo syncs every ~15 seconds and your dev server handles hot reload, while the health server on port 9090 keeps the container alive for debugging.
 
+Monorepos: set `GITHUB_REPO_FOLDER` to sync only a subfolder into `/workspaces/app`. The container keeps a git clone in `/tmp/monorepo-cache` and rsyncs the subfolder into the workspace (preserving common caches like `node_modules`).
+
 Deploy to DigitalOcean (uses `.do/deploy.template.yaml`):
 
 [![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-hot-reload-template/tree/main)
