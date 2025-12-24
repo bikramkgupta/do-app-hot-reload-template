@@ -21,3 +21,6 @@ Thumbs.db
 .env.development
 .claude/
 .cursor/
+
+# Local app specs with secrets (never commit!)
+.do/app.local.yaml

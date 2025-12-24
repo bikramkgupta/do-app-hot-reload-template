@@ -1,219 +1,121 @@
-# AI Agent Playbook: Hot Reload Dev Environment
+# AI Agent Deployment Guide
 
-**Deploy a dev/staging environment in ~1 minute using pre-built Docker images.**
+Deploy hot-reload dev environments to DigitalOcean App Platform.
 
-## The Philosophy
+## Aha in 5 minutes (80% case)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  CONTAINER CONFIG (app.yaml - committed):                       │
-│    • GITHUB_REPO_URL → Where's the code?                       │
-│    • DEV_START_COMMAND → How to start it?                      │
-└─────────────────────────────────────────────────────────────────┘
+1. Copy `.github/workflows/deploy-app.yml` and `.do/app.yaml` into the target repo.
+2. Copy an example `dev_startup.sh` from `examples/` into the repo root (review/edit for the framework).
+3. Add GitHub Secrets: `DIGITALOCEAN_ACCESS_TOKEN`, `APP_GITHUB_TOKEN` (private repos), and any app secrets. This is a one-time setup per repo (done by the repo owner).
+4. Run deploy:
 
-┌─────────────────────────────────────────────────────────────────┐
-│  APP SECRETS (DO Console or local spec - never committed):      │
-│    • DATABASE_URL, API_KEY, STRIPE_SECRET, etc.                │
-│    • Set via: doctl apps update --spec .do/app.local.yaml      │
-│    • Or: DO Console → Settings → Environment Variables         │
-└─────────────────────────────────────────────────────────────────┘
+```bash
+gh workflow run deploy-app.yml -f action=deploy
 ```
 
-## Quick Deploy (5 Steps)
+Why this is useful: ~1 minute deploys and shell access for debugging even if the app fails.
 
-### 1. Choose the right image
+The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if the workflow runs in a different repo than the app (e.g., a central template) or you use GitHub Enterprise. For monorepos, set `GITHUB_REPO_FOLDER`.
 
-| Runtime | Image |
-|---------|-------|
-| Node.js | `ghcr.io/bikramkgupta/hot-reload-node` |
-| Python | `ghcr.io/bikramkgupta/hot-reload-python` |
-| Go | `ghcr.io/bikramkgupta/hot-reload-go` |
-| Node + Python | `ghcr.io/bikramkgupta/hot-reload-node-python` |
-| All runtimes | `ghcr.io/bikramkgupta/hot-reload-full` |
+If `GITHUB_REPO_URL` points to this template repo, you will see the welcome page until you point it to your app repo or add your own `dev_startup.sh` here.
 
-### 2. Create app spec
+## Minimal edits to `.do/app.yaml`
+
+- Set `name`, `region`, and the image `repository` (node/bun/python/go/ruby/full).
+- Keep `DEV_START_COMMAND` as `bash dev_startup.sh` (default) or change if needed.
+- Add app secrets with `${SECRET_NAME}`.
+
+Example snippet:
 
 ```yaml
-name: dev-environment
-region: syd1
-
-services:
-  - name: dev-workspace
-    image:
-      registry_type: GHCR
-      registry: bikramkgupta
-      repository: hot-reload-node  # Change for your runtime
-      tag: latest
-    http_port: 8080
-    internal_ports:
-      - 9090  # Health check port - keeps container alive if app crashes
-    health_check:
-      http_path: /dev_health
-      port: 9090  # Separate from app - ensures shell access for debugging
     envs:
       - key: GITHUB_REPO_URL
-        value: "https://github.com/USER/REPO"
+        value: "${GITHUB_REPO_URL}"  # auto-filled by the workflow
+        scope: RUN_TIME
+
       - key: DEV_START_COMMAND
         value: "bash dev_startup.sh"
-      # Only if private repo:
-      - key: GITHUB_TOKEN
-        value: ""
-        type: SECRET
-```
-
-**Critical:** The health check is on port 9090, separate from your app on 8080. This ensures shell access even if your app crashes.
-
-### 3. Deploy
-
-```bash
-doctl apps create --spec app.yaml
-```
-
-### 4. Verify
-
-```bash
-# Get app ID
-APP_ID=$(doctl apps list --format ID --no-header | head -1)
-
-# Check deployment status
-doctl apps get $APP_ID -o json | jq -r '.active_deployment.phase'
-# Should be: ACTIVE
-
-# View logs
-doctl apps logs $APP_ID dev-workspace --type run --follow
-
-# Test health endpoint
-curl https://YOUR-APP-URL.ondigitalocean.app/health
-```
-
-### 5. Done!
-
-The container is now syncing code every 15 seconds. Changes to the user's repo appear automatically.
-
----
-
-## Iterative Deployment (Recommended Approach)
-
-**Deploy incrementally to catch issues early:**
-
-### Step 1: Deploy the bare image first
-
-Create a minimal spec without secrets:
-
-```yaml
-name: dev-environment
-region: syd1
-
-services:
-  - name: dev-workspace
-    image:
-      registry_type: GHCR
-      registry: bikramkgupta
-      repository: hot-reload-node
-      tag: latest
-    http_port: 8080
-    internal_ports:
-      - 9090
-    health_check:
-      http_path: /dev_health
-      port: 9090
-    envs:
-      - key: GITHUB_REPO_URL
-        value: "https://github.com/USER/REPO"
-      - key: DEV_START_COMMAND
-        value: "bash dev_startup.sh"
-```
-
-```bash
-doctl apps create --spec app.yaml
-```
-
-**Verify:** Shell access works, code syncs, welcome page or your app shows.
-
-### Step 2: Add app environment variables
-
-Update the spec to add non-secret env vars:
-
-```bash
-doctl apps update $APP_ID --spec app.yaml
-```
-
-**Verify:** Deployment succeeds, shell access still works.
-
-### Step 3: Add secrets via local spec
-
-Create `.do/app.local.yaml` with secrets (add to `.gitignore`):
-
-```yaml
-name: dev-environment
-services:
-  - name: dev-workspace
-    envs:
-      - key: DATABASE_URL
-        value: "postgresql://user:pass@host:5432/db"
-        scope: RUN_TIME
-      - key: NEXTAUTH_SECRET
-        value: "your-secret"
-        scope: RUN_TIME
-      - key: STRIPE_SECRET_KEY
-        value: "sk_test_xxx"
         scope: RUN_TIME
 ```
 
-```bash
-doctl apps update $APP_ID --spec .do/app.local.yaml
-```
-
-**Verify:** App starts correctly with all services connected.
-
-### Why This Approach Works
-
-At every step:
-- You have shell access to debug
-- You can see exactly what went wrong
-- You're not guessing about multiple issues at once
-
----
-
-## Managing Secrets
-
-**Never commit secrets to GitHub.** Use a local app spec file:
-
-1. Create `.do/app.local.yaml` with your secrets
-2. Add `.do/app.local.yaml` to `.gitignore`
-3. Deploy with: `doctl apps update $APP_ID --spec .do/app.local.yaml`
-
-This keeps secrets on your local machine only.
-
----
-
-## User's Repository Setup
-
-Tell users their repo needs:
-
-### dev_startup.sh (required)
+## Deploy / Delete
 
 ```bash
-#!/bin/bash
-# Environment variables are injected by DO App Platform
-# No need to load .env - secrets come from DO Console
+# Deploy
+gh workflow run deploy-app.yml -f action=deploy
 
-# Install dependencies and start dev server
-npm install
-npm run dev -- --hostname 0.0.0.0 --port 8080
+# Delete
+gh workflow run deploy-app.yml -f action=delete
 ```
 
-### .env.example (template only - no real values!)
+## Details & Reference
 
-```bash
-# Copy to .env.local for local development
-# For deployed apps, set these in DO Console or local app spec
-DATABASE_URL=
-API_KEY=
-STRIPE_SECRET=
-```
+### Secrets
 
-**Key point:** Secrets are injected at runtime via DO Console or `.do/app.local.yaml` (gitignored). Never commit actual secrets to your repo.
+1. Add secret to GitHub (Settings → Secrets → Actions)
+2. Reference in app spec: `value: "${SECRET_NAME}"`
+3. Deploy - the workflow substitutes values
+
+Pre-wired secrets in workflow:
+- `APP_GITHUB_TOKEN`, `DATABASE_URL`, `REDIS_URL`, `MONGODB_URI`
+- `AUTH_SECRET`, `NEXTAUTH_SECRET`, `JWT_SECRET`, `SESSION_SECRET`
+- `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`
+- `STRIPE_SECRET_KEY`, `AWS_ACCESS_KEY_ID`, `SENTRY_DSN`
+- `CUSTOM_SECRET_1` through `CUSTOM_SECRET_10`
+
+If your secret is not listed in `.github/workflows/deploy-app.yml`, replace `CUSTOM_SECRET_1..10` (or add new entries) and reference that name in your app spec.
+
+### Runtimes
+
+| Repository | Use Case |
+|------------|----------|
+| `hot-reload-node` | Node.js, Next.js, React |
+| `hot-reload-bun` | Bun apps |
+| `hot-reload-python` | FastAPI, Django, Flask |
+| `hot-reload-go` | Go APIs |
+| `hot-reload-ruby` | Rails, Sinatra |
+| `hot-reload-full` | Multi-language |
+
+### App Platform Reference
+
+For regions, sizes, and app spec details, see https://docs.digitalocean.com/products/app-platform/
+
+### Instance Sizes
+
+| Slug | Specs |
+|------|-------|
+| `apps-s-1vcpu-0.5gb` | 1 vCPU, 0.5GB |
+| `apps-s-1vcpu-1gb` | 1 vCPU, 1GB |
+| `apps-s-1vcpu-2gb` | 1 vCPU, 2GB (recommended) |
+| `apps-s-2vcpu-4gb` | 2 vCPU, 4GB |
+
+See [pricing](https://docs.digitalocean.com/products/app-platform/details/pricing/).
+
+### Environment Variables
+
+#### Required
+
+| Key | Description |
+|-----|-------------|
+| `GITHUB_REPO_URL` | Auto-filled by the workflow (current repo); override if deploying a different repo |
+| `DEV_START_COMMAND` | Startup command |
+
+#### Optional
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `GITHUB_TOKEN` | - | For private repos |
+| `GITHUB_BRANCH` | main | Branch to sync |
+| `GITHUB_REPO_FOLDER` | - | Monorepo subfolder |
+| `GITHUB_SYNC_INTERVAL` | 15 | Sync frequency (seconds) |
+
+#### Scope Options
+
+| Scope | When Available |
+|-------|----------------|
+| `RUN_TIME` | Only at run-time (default) |
+| `BUILD_TIME` | Only at build-time |
+| `RUN_AND_BUILD_TIME` | Both |
 
 ---
 
@@ -221,129 +123,51 @@ STRIPE_SECRET=
 
 **AI agents can remotely control and troubleshoot the running container** using [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox).
 
-### Installation
+Follow the existing-app guide (component name required): https://github.com/bikramkgupta/do-app-sandbox/blob/main/docs/troubleshooting_existing_apps.md
 
 ```bash
-# Requires Python 3.10.12+ and doctl authenticated
-pip install do-app-sandbox
-```
-
-### Execute Commands in Container
-
-```bash
-# Run any command in the running container
-sandbox exec $APP_ID "ls -la /workspaces/app"
-sandbox exec $APP_ID "cat .env"
-sandbox exec $APP_ID "ps aux"
-sandbox exec $APP_ID "node --version"
-
-# Check git sync status
-sandbox exec $APP_ID "cd /workspaces/app && git log -1 --oneline"
-sandbox exec $APP_ID "cat /tmp/last_job_commit.txt"
-
-# Debug application issues
-sandbox exec $APP_ID "cat /workspaces/app/package.json"
-sandbox exec $APP_ID "npm list --depth=0"
-sandbox exec $APP_ID "tail -50 /tmp/app.log"
-```
-
-### Common Debugging Scenarios
-
-| What to Check | Command |
-|---------------|---------|
-| Is code synced? | `sandbox exec $APP_ID "cd /workspaces/app && git log -1"` |
-| What's running? | `sandbox exec $APP_ID "ps aux"` |
-| Check .env loaded | `sandbox exec $APP_ID "env \| grep DATABASE"` |
-| View app logs | `sandbox exec $APP_ID "cat /tmp/*.log"` |
-| Check disk space | `sandbox exec $APP_ID "df -h"` |
-| Test connectivity | `sandbox exec $APP_ID "curl -I https://api.example.com"` |
-
-### Why This Matters for AI Agents
-
-1. **Verify before changing** - Check container state before updating config
-2. **Debug without redeploy** - Inspect logs, env vars, processes live
-3. **Fast iteration** - Test commands directly, then add to dev_startup.sh
-4. **Validate fixes** - Confirm changes worked without waiting for redeploy
-
----
-
-## Other Common Tasks
-
-### Force redeploy (if needed)
-
-```bash
-doctl apps create-deployment $APP_ID
-```
-
-### Update environment variable
-
-```bash
-# Get current spec
-doctl apps spec get $APP_ID > spec.yaml
-
-# Edit spec.yaml, then:
-doctl apps update $APP_ID --spec spec.yaml
+# Get the component name(s) for your app
+doctl apps get <APP_ID> -o json | jq -r '.[0].spec.services[].name, .[0].spec.workers[].name, .[0].spec.jobs[].name'
 ```
 
 ---
 
-## Troubleshooting
+## Full Workflow (Optional)
 
-| Issue | Check | Fix |
-|-------|-------|-----|
-| Container not starting | `doctl apps logs $APP_ID --type deploy` | Check image name |
-| App not running | `doctl apps logs $APP_ID --type run` | Check DEV_START_COMMAND |
-| Code not syncing | `sandbox exec $APP_ID "cd /workspaces/app && git status"` | Check GITHUB_REPO_URL |
-| Health check failing | `curl https://APP-URL/health` | Ensure app listens on 8080 |
-| Private repo access denied | Check logs for auth errors | Set GITHUB_TOKEN as secret |
-
----
-
-## What NOT to Do
-
-1. **Don't commit secrets to your repo** - Use DO Console or gitignored local app spec (`.do/app.local.yaml`)
-2. **Don't use `dockerfile_path`** - Use pre-built images for ~1 minute deploys
-3. **Don't enable `deploy_on_push`** - We want git sync, not full rebuilds
-
----
-
-## Files Reference
-
-```
-app-specs/
-├── app-node.yaml      # Node.js image
-├── app-python.yaml    # Python image
-├── app-go.yaml        # Go image
-└── app-full.yaml      # All runtimes
-
-# In container:
-/workspaces/app/       # User's cloned repo
-/tmp/last_job_commit.txt  # Last synced commit
-```
-
----
-
-## doctl Commands Cheat Sheet
+### Step 1: Deploy
 
 ```bash
-# List apps
-doctl apps list
-
-# Get app details
-doctl apps get $APP_ID
-
-# View logs
-doctl apps logs $APP_ID COMPONENT --type run
-doctl apps logs $APP_ID COMPONENT --type build
-doctl apps logs $APP_ID COMPONENT --type deploy
-
-# Get/update spec
-doctl apps spec get $APP_ID > spec.yaml
-doctl apps update $APP_ID --spec spec.yaml
-
-# Force redeploy
-doctl apps create-deployment $APP_ID
-
-# Delete app
-doctl apps delete $APP_ID
+gh workflow run deploy-app.yml -f action=deploy
 ```
+
+### Step 2: Wait for deployment
+
+```bash
+gh run watch
+```
+
+### Step 3: Get app URL
+
+```bash
+doctl apps list --format Name,LiveURL
+```
+
+### Step 4: Debug if needed
+
+Use the do-app-sandbox guide above, or open a console:
+
+```bash
+doctl apps console <APP_ID> dev-workspace
+```
+
+### Step 5: Clean up when done
+
+```bash
+gh workflow run deploy-app.yml -f action=delete
+```
+
+---
+
+## References
+
+- App Platform commands: https://github.com/bikramkgupta/do-app-sandbox/blob/main/App_Platform_Commands.md

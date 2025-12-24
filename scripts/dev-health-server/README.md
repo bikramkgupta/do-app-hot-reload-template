@@ -2,6 +2,8 @@
 
 Simple Go HTTP server for bootstrap health checks in the dev container template.
 
+Not required for the quick start; included for transparency and debugging.
+
 ## Purpose
 
 This health server serves a basic `/dev_health` endpoint to ensure the container passes health checks during initial deployment, before the user's application is running.

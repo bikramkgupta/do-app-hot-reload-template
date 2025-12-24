@@ -2,6 +2,8 @@
 
 These `dev_startup.sh` examples handle dependency management automatically—when you add a new package to `package.json` or `requirements.txt`, the script detects the change and reinstalls before starting your dev server.
 
+If you're following the quick start, just copy one script to your repo root as `dev_startup.sh` and keep `DEV_START_COMMAND` set to `bash dev_startup.sh`.
+
 > **Important:** Use `dev_startup.sh` for dependency installation, NOT `PRE_DEPLOY_COMMAND`.
 >
 > `PRE_DEPLOY_COMMAND` runs in strict mode—if it fails (e.g., npm install fails), the container exits and you lose shell access for debugging. With `dev_startup.sh`, failures are handled gracefully and you can always shell in to fix issues.

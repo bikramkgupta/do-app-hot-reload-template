@@ -11,50 +11,144 @@ This is part of 3 projects to scale Agentic workflows with DigitalOcean App Plat
 
 Pre-built Docker images with Node.js, Python, or Go ready to go. Deploy any codebase to DO App Platform in ~1 minute.
 
-## Quick Start
+How it works: deploy pulls a pre-built image, starts a container, syncs your repo, and runs `dev_startup.sh`. After that, your repo syncs every ~15 seconds and your dev server handles hot reload, while the health server on port 9090 keeps the container alive for debugging.
+
+Deploy to DigitalOcean (uses `.do/deploy.template.yaml`):
 
 [![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/bikramkgupta/do-app-hot-reload-template/tree/main)
 
-### 1. Deploy the Container (~1 minute)
+If you use the Deploy button or Console, you will set env vars in App Platform. For AI assistants, follow the GitHub Actions flow below.
 
-```bash
-# Using doctl CLI
-doctl apps create --spec app.yaml
+## Aha in 5 minutes (80% case)
+
+1. Copy `.github/workflows/deploy-app.yml` and `.do/app.yaml` into your repo.
+2. Copy a `dev_startup.sh` from `examples/` into your repo root (review/edit for your framework).
+3. Add GitHub Secrets: `DIGITALOCEAN_ACCESS_TOKEN`, `APP_GITHUB_TOKEN` (private repos), and any app secrets.
+4. Run deploy: `gh workflow run deploy-app.yml -f action=deploy` (or via GitHub UI).
+
+Why this is useful: ~1 minute deploys and shell access for debugging even if the app fails.
+
+The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if the workflow runs in a different repo than the app (e.g., a central template) or you use GitHub Enterprise. For monorepos, set `GITHUB_REPO_FOLDER`.
+
+## Quick Start (details)
+
+### Step 1: Copy Files to Your Repo
+
+Copy these files to your repository:
+- `.github/workflows/deploy-app.yml` - The deployment workflow
+- `.do/app.yaml` - Your app spec (edit this!)
+- `dev_startup.sh` - Your startup script
+
+### Step 2: Edit `.do/app.yaml`
+
+Edit the app spec for your project. AI assistants (Claude, Cursor, Codex) can help you customize it.
+
+Secrets are stored in GitHub and substituted by the workflow. If an env var is not a secret, you can hardcode it here.
+
+```yaml
+name: my-dev-app
+region: syd
+
+services:
+  - name: dev-workspace
+    image:
+      registry_type: GHCR
+      registry: bikramkgupta
+      repository: hot-reload-node  # node, bun, python, go, ruby, full
+      tag: latest
+
+    instance_size_slug: apps-s-1vcpu-2gb
+    http_port: 8080
+
+    envs:
+      - key: GITHUB_REPO_URL
+        value: "${GITHUB_REPO_URL}"  # auto-filled by the workflow
+        scope: RUN_TIME
+
+      # For secrets: use ${SECRET_NAME} syntax
+      - key: DATABASE_URL
+        value: "${DATABASE_URL}"
+        scope: RUN_TIME
+        type: SECRET
 ```
 
-Or use the DO Console:
-1. Create App → Deploy from Container Registry
-2. Registry: `ghcr.io`
-3. Image: `bikramkgupta/hot-reload-node` (or python, go, etc.)
-4. Tag: `latest`
+See [`.do/app.yaml`](.do/app.yaml) for the full template with all options.
 
-### 2. Configure Your App (DO Console)
+### Step 3: Add Secrets to GitHub
 
-After deployment, set environment variables:
+Go to Settings → Secrets and variables → Actions and add:
 
-| Variable | Value | Required |
-|----------|-------|----------|
-| `GITHUB_REPO_URL` | `https://github.com/you/your-app` | Yes |
-| `GITHUB_TOKEN` | Your PAT (for private repos) | If private |
-| `DEV_START_COMMAND` | `bash dev_startup.sh` | Recommended |
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `DIGITALOCEAN_ACCESS_TOKEN` | Yes | Your DO API token |
+| `APP_GITHUB_TOKEN` | If private repo | GitHub PAT for private repos |
+| Your app secrets | As needed | DATABASE_URL, AUTH_SECRET, etc. |
 
-### 3. Add dev_startup.sh to Your Repo
+### Step 4: Deploy
+
+```bash
+# Deploy
+gh workflow run deploy-app.yml -f action=deploy
+
+# Delete
+gh workflow run deploy-app.yml -f action=delete
+```
+
+Or use the GitHub UI: Actions → "Deploy to DigitalOcean App Platform" → Run workflow
+
+Monitor logs via the Actions run, or in DigitalOcean App Platform (or `doctl apps logs`).
+
+## How Secrets Work
+
+1. Add secret to GitHub (e.g., `DATABASE_URL`)
+2. Reference in your app spec with `${SECRET_NAME}`:
+   ```yaml
+   - key: DATABASE_URL
+     value: "${DATABASE_URL}"
+     type: SECRET
+   ```
+3. The workflow substitutes the value at deploy time
+
+The workflow has 40+ common secrets pre-wired. Just add them to GitHub Secrets and reference in your app spec.
+If your secret is not listed in `.github/workflows/deploy-app.yml`, replace `CUSTOM_SECRET_1..10` (or add new entries) and reference that name in your app spec.
+
+## Create dev_startup.sh (before deploy)
+
+Your repository needs a `dev_startup.sh` script that handles dependency installation and starts your dev server.
+
+**Copy an example from [`examples/`](examples/):**
+
+| Framework | Script | Key Features |
+|-----------|--------|--------------|
+| Next.js / Node | `dev_startup_nextjs.sh` | Change detection, auto-reinstall |
+| Python / FastAPI | `dev_startup_python.sh` | uv or pip, uvicorn with --reload |
+| Go | `dev_startup_go.sh` | go mod tidy, air hot reload |
+| Rails | `dev_startup_rails.sh` | bundle install, db migrations |
+
+**Simple example:**
 
 ```bash
 #!/bin/bash
-npm install
-npm run dev -- --hostname 0.0.0.0 --port 8080
+set -e
+
+# Detect package.json changes and reinstall
+HASH_FILE=".deps_hash"
+CURRENT_HASH=$(sha256sum package.json 2>/dev/null | cut -d' ' -f1 || echo "none")
+STORED_HASH=$(cat "$HASH_FILE" 2>/dev/null || echo "")
+
+if [ "$CURRENT_HASH" != "$STORED_HASH" ] || [ ! -d "node_modules" ]; then
+    echo "Installing dependencies..."
+    npm install
+    echo "$CURRENT_HASH" > "$HASH_FILE"
+fi
+
+# Start dev server - MUST bind to 0.0.0.0:8080
+exec npm run dev -- --hostname 0.0.0.0 --port 8080
 ```
-
-See [`examples/`](examples/) for startup scripts that handle dependency changes automatically (Next.js, Python, Go, Rails).
-
-That's it! Your app syncs from GitHub every 15 seconds with hot reload.
 
 ## Why This Exists
 
-Standard App Platform deploys go through build, push to registry, and deploy—which is great for production stability. For **development and testing branches** where you need to iterate rapidly, this template offers a faster alternative.
-
-**Pre-built images skip the build phase entirely:**
+Standard App Platform deploys go through build, push to registry, and deploy—which is great for production. For **development and testing branches** where you need to iterate rapidly, this template offers a faster alternative.
 
 | Use Case | Approach | Deploy Time |
 |----------|----------|-------------|
@@ -66,209 +160,101 @@ Standard App Platform deploys go through build, push to registry, and deploy—w
 - **AI-ready** - Point your favorite AI assistant at your container and let it fix issues remotely
 - **Hot reload** - Code syncs every 15 seconds, your dev server handles the rest
 
-> **Note:** If you don't configure anything, the container still works—you'll see the welcome page and can shell in to explore.
-
 ## Critical: Shell Access for Debugging
-
-**An important feature of this template is shell access when things break.**
 
 The health check runs on **port 9090** (separate from your app on port 8080). This is intentional:
 
 | Component | Port | Purpose |
 |-----------|------|---------|
-| Your app | 8080 | Your application |
-| Health check | 9090 | Keeps container alive |
+| Your app | 8080 | Your application (public HTTP) |
+| Health check | 9090 | Keeps container alive (internal) |
 
-**Why this matters:**
-- If your app crashes, the container **stays alive** because health check still responds
-- You can shell in with [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox) and debug
-- AI assistants can connect and help fix issues remotely
-
-**Do not change the health check to port 8080** for dev environments. That defeats the purpose—a broken app would kill the container and you'd lose access.
+**Why this matters:** If your app crashes, the container **stays alive** because health check still responds. You can shell in with [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox) and debug.
 
 ## Available Images
 
 | Image | Runtimes | Use Case |
 |-------|----------|----------|
-| `ghcr.io/bikramkgupta/hot-reload-node` | Node.js 22/24 | Next.js, React, Express |
-| `ghcr.io/bikramkgupta/hot-reload-python` | Python 3.12/3.13 | FastAPI, Django, Flask |
-| `ghcr.io/bikramkgupta/hot-reload-go` | Go 1.23 | Go APIs, CLI tools |
-| `ghcr.io/bikramkgupta/hot-reload-ruby` | Ruby 3.4/3.3 | Rails, Sinatra, Hanami |
-| `ghcr.io/bikramkgupta/hot-reload-node-python` | Node.js + Python | Full-stack apps |
-| `ghcr.io/bikramkgupta/hot-reload-full` | Node + Python + Go | Multi-language |
-
-## App Spec Example
-
-```yaml
-name: my-dev-app
-region: syd1
-
-services:
-  - name: dev-workspace
-    image:
-      registry_type: GHCR
-      repository: bikramkgupta/hot-reload-node
-      tag: latest
-    http_port: 8080
-    internal_ports:
-      - 9090  # Health check port (keeps container alive if app crashes)
-    health_check:
-      http_path: /dev_health
-      port: 9090  # Separate from app - ensures shell access for debugging
-    envs:
-      - key: GITHUB_REPO_URL
-        value: "https://github.com/you/your-app"
-      - key: DEV_START_COMMAND
-        value: "bash dev_startup.sh"
-```
-
-See `app-specs/` for complete examples.
-
-## How It Works
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Your Deploy (~1 min)                                        │
-│                                                              │
-│  1. Pull pre-built image from GHCR (30 sec)                 │
-│  2. Start container                                          │
-│  3. Clone your repo from GitHub                             │
-│  4. Run your dev_startup.sh                                 │
-│  5. Your app is live!                                       │
-│                                                              │
-│  Continuous: Git sync every 15 seconds                      │
-│              Your dev server handles hot reload             │
-└─────────────────────────────────────────────────────────────┘
-```
+| `hot-reload-node` | Node.js 22/24 | Next.js, React, Express |
+| `hot-reload-bun` | Bun (latest) | Bun apps, fast bundling |
+| `hot-reload-python` | Python 3.12/3.13 | FastAPI, Django, Flask |
+| `hot-reload-go` | Go 1.23 | Go APIs, CLI tools |
+| `hot-reload-ruby` | Ruby 3.4/3.3 | Rails, Sinatra, Hanami |
+| `hot-reload-node-python` | Node.js + Python | Full-stack apps |
+| `hot-reload-full` | Node + Python + Go | Multi-language |
 
 ## Environment Variables
 
-### Required
+### Required in App Spec
 
 | Variable | Description |
 |----------|-------------|
-| `GITHUB_REPO_URL` | Your application repository |
-| `DEV_START_COMMAND` | Startup command (or add `dev_startup.sh` to repo) |
+| `GITHUB_REPO_URL` | Auto-filled by the workflow (current repo); override if deploying a different repo |
+| `DEV_START_COMMAND` | Startup command (default: `bash dev_startup.sh`) |
 
 ### Optional
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GITHUB_TOKEN` | - | For private repos (set as secret) |
+| `GITHUB_TOKEN` | - | For private repos (use `${APP_GITHUB_TOKEN}`) |
 | `GITHUB_BRANCH` | main | Branch to sync |
 | `GITHUB_REPO_FOLDER` | - | Subfolder for monorepos |
 | `GITHUB_SYNC_INTERVAL` | 15 | Sync frequency (seconds) |
 
-### Deploy Jobs (Optional)
+### Scope Options
 
-Run commands when code changes are detected (on git commit change, not every sync):
+| Scope | When Available | Use Case |
+|-------|----------------|----------|
+| `RUN_TIME` | Only at run-time | Database URLs, API keys |
+| `BUILD_TIME` | Only at build-time | NPM tokens |
+| `RUN_AND_BUILD_TIME` | Both | Shared configs |
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PRE_DEPLOY_COMMAND` | - | Runs before app starts (e.g., `bash scripts/migrate.sh`) |
-| `PRE_DEPLOY_TIMEOUT` | 300 | Timeout in seconds |
-| `POST_DEPLOY_COMMAND` | - | Runs after app starts (e.g., `bash scripts/seed.sh`) |
-| `POST_DEPLOY_TIMEOUT` | 300 | Timeout in seconds |
+## App Platform Reference
 
-### Managing Secrets
+For app spec details (instance sizes, pricing, regions, component types), see https://docs.digitalocean.com/products/app-platform/
 
-**Never commit secrets to GitHub** (public or private repos). Instead, use a local app spec file:
+## Workflow Reference
 
-1. Create a local spec file with your secrets:
-   ```bash
-   # .do/app.local.yaml (add to .gitignore)
-   ```
+### Inputs
 
-   ```yaml
-   name: my-dev-app
-   services:
-     - name: dev-workspace
-       envs:
-         - key: DATABASE_URL
-           value: "postgresql://user:pass@host:5432/db"
-           scope: RUN_TIME
-         - key: NEXTAUTH_SECRET
-           value: "your-secret-here"
-           scope: RUN_TIME
-         # ... other secrets
-   ```
+| Input | Default | Description |
+|-------|---------|-------------|
+| `action` | deploy | `deploy` or `delete` |
+| `app_spec_path` | .do/app.yaml | Path to your app spec |
 
-2. Add to `.gitignore`:
-   ```
-   .do/app.local.yaml
-   ```
+### Deploy
 
-3. Deploy with your local spec:
-   ```bash
-   doctl apps update <app-id> --spec .do/app.local.yaml
-   ```
+```bash
+# Uses default .do/app.yaml
+gh workflow run deploy-app.yml -f action=deploy
 
-This keeps secrets on your local machine, never in version control. You can have different local specs for different environments.
+# Use a different app spec
+gh workflow run deploy-app.yml -f action=deploy -f app_spec_path=.do/staging.yaml
+```
 
-> **Note:** The [AI agent playbook](agent.md) follows this same approach for secrets management.
+### Delete
 
-## Example Startup Scripts
-
-See [`examples/`](examples/) for complete startup scripts for each runtime:
-- `dev_startup_nextjs.sh` - Node.js / Next.js
-- `dev_startup_python.sh` - Python / FastAPI
-- `dev_startup_go.sh` - Go
-- `dev_startup_rails.sh` - Ruby / Rails
-
-These scripts handle dependency caching and change detection automatically.
+```bash
+gh workflow run deploy-app.yml -f action=delete
+```
 
 ## Important Notes
 
 - **Port 8080**: Your app must listen on port 8080, bound to `0.0.0.0`
-- **Health check on 9090**: The dev health server runs on port 9090, separate from your app. This keeps the container alive even if your app crashes, giving you shell access to debug.
+- **Port 9090**: Reserved for health check—don't use in your app
 - **Hot reload**: Use a dev server that supports it (`npm run dev`, `uvicorn --reload`, etc.)
-- **Resource sizing**: Ensure your container has enough CPU/memory. npm install for large projects needs resources.
-- **No rebuild needed**: Change env vars and redeploy—your code syncs automatically
+- **Template repo URL**: If `GITHUB_REPO_URL` points at this template repo, you’ll only see the welcome page until you point to your app repo (or add your own `dev_startup.sh` here).
+- **Resource sizing**: Ensure your container has enough CPU/memory
 
-## Custom Images
+## Multi-component Applications
 
-Need a different runtime combo? See [GHCR_SETUP.md](GHCR_SETUP.md) for instructions on building and publishing your own images.
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| App doesn't start | Check `GITHUB_REPO_URL` is set, `dev_startup.sh` exists |
-| Health check fails | Ensure app listens on port 8080 |
-| Changes not visible | Use a dev server with hot reload |
-| Private repo access | Set `GITHUB_TOKEN` as a secret |
-
-## Files in This Repo
-
-```
-├── Dockerfile              # Multi-stage build for all runtimes
-├── app.yaml               # Default app spec (Node.js)
-├── app-specs/             # App specs for each runtime
-│   ├── app-node.yaml
-│   ├── app-python.yaml
-│   ├── app-go.yaml
-│   ├── app-ruby.yaml
-│   └── app-full.yaml
-├── examples/              # Startup script examples
-│   ├── dev_startup_nextjs.sh
-│   ├── dev_startup_python.sh
-│   ├── dev_startup_go.sh
-│   └── dev_startup_rails.sh
-├── scripts/
-│   ├── startup.sh         # Container entrypoint
-│   ├── github-sync.sh     # Continuous sync daemon
-│   └── welcome-page-server/  # Welcome page + health endpoint
-└── .github/workflows/
-    └── build-and-push-images.yml  # Builds images to GHCR
-```
+DigitalOcean App Platform lets you run multiple components in one app. Each component can use this template image and its own `GITHUB_REPO_FOLDER` (for monorepos) and `DEV_START_COMMAND`. See an example with Bun + Node + load tester on the dev branch here: https://github.com/bikramkgupta/bun-node-comparison-harness/tree/dev
 
 ## Contributing
 
 1. Fork this repo
 2. Make changes
 3. Submit PR
-
-To request a new runtime combination, open an issue.
 
 ---
 

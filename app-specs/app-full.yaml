@@ -8,7 +8,7 @@
 #
 
 name: hot-reload-dev
-region: syd1
+region: syd
 
 services:
   - name: dev-workspace
@@ -37,8 +37,9 @@ services:
       port: 9090
 
     envs:
+      # Set this to your GitHub repository URL (or keep ${GITHUB_REPO_URL} for GitHub Actions)
       - key: GITHUB_REPO_URL
-        value: ""
+        value: "${GITHUB_REPO_URL}"
         scope: RUN_TIME
       - key: GITHUB_TOKEN
         value: ""

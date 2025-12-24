@@ -6,13 +6,13 @@
 #   doctl apps create --spec app-specs/app-python.yaml
 #
 # After deployment, configure your app in the DO Console:
-#   - Set GITHUB_REPO_URL to your repository
+#   - Set GITHUB_REPO_URL to your repository (or keep ${GITHUB_REPO_URL} if deployed via GitHub Actions)
 #   - Set GITHUB_TOKEN if private repo (as secret)
 #   - Set DEV_START_COMMAND or add dev_startup.sh to your repo
 #
 
 name: hot-reload-dev
-region: syd1
+region: syd
 
 services:
   - name: dev-workspace
@@ -47,7 +47,7 @@ services:
     envs:
       # === Your Application Repository ===
       - key: GITHUB_REPO_URL
-        value: ""
+        value: "${GITHUB_REPO_URL}"
         scope: RUN_TIME
 
       - key: GITHUB_TOKEN

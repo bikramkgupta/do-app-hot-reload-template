@@ -1,0 +1,105 @@
+#
+# DigitalOcean App Spec - Hot Reload Dev Environment
+#
+# Edit this file for your project, then deploy with:
+#   gh workflow run deploy-app.yml -f action=deploy
+#
+# For secrets: use ${SECRET_NAME} syntax
+# Add the secret to GitHub (Settings → Secrets → Actions)
+# The workflow will substitute values at deploy time
+#
+# Note: GITHUB_REPO_URL is auto-filled by the workflow. If you deploy
+# without the workflow, replace it with your repo URL.
+#
+# See app-specs/ folder for more examples (bun, python, go, ruby, full)
+#
+
+name: my-dev-app
+region: syd
+
+services:
+  - name: dev-workspace
+    image:
+      registry_type: GHCR
+      registry: bikramkgupta
+      repository: hot-reload-node  # Options: node, bun, python, go, ruby, full
+      tag: latest
+
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-2gb  # See: https://docs.digitalocean.com/products/app-platform/details/pricing/
+
+    http_port: 8080
+    internal_ports:
+      - 9090
+
+    health_check:
+      http_path: /dev_health
+      port: 9090
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+
+    envs:
+      # === Repository Settings ===
+      - key: GITHUB_REPO_URL
+        value: "${GITHUB_REPO_URL}"
+        scope: RUN_TIME
+
+      # For private repos: add APP_GITHUB_TOKEN to GitHub Secrets
+      - key: GITHUB_TOKEN
+        value: "${APP_GITHUB_TOKEN}"
+        scope: RUN_TIME
+        type: SECRET
+
+      - key: GITHUB_BRANCH
+        value: ""  # Leave empty for default branch
+        scope: RUN_TIME
+
+      - key: GITHUB_REPO_FOLDER
+        value: ""  # For monorepos: subfolder path
+        scope: RUN_TIME
+
+      # === Startup Settings ===
+      - key: DEV_START_COMMAND
+        value: "bash dev_startup.sh"
+        scope: RUN_TIME
+
+      - key: GITHUB_SYNC_INTERVAL
+        value: "15"
+        scope: RUN_TIME
+
+      - key: WORKSPACE_PATH
+        value: "/workspaces/app"
+        scope: RUN_TIME
+
+      # === Deploy Jobs (Optional) ===
+      - key: PRE_DEPLOY_COMMAND
+        value: ""
+        scope: RUN_TIME
+      - key: PRE_DEPLOY_TIMEOUT
+        value: "300"
+        scope: RUN_TIME
+      - key: POST_DEPLOY_COMMAND
+        value: ""
+        scope: RUN_TIME
+      - key: POST_DEPLOY_TIMEOUT
+        value: "300"
+        scope: RUN_TIME
+
+      # === Your App Secrets ===
+      # Add secrets to GitHub, then reference with ${SECRET_NAME}
+      # Examples:
+      # - key: DATABASE_URL
+      #   value: "${DATABASE_URL}"
+      #   scope: RUN_TIME
+      #   type: SECRET
+      # - key: AUTH_SECRET
+      #   value: "${AUTH_SECRET}"
+      #   scope: RUN_TIME
+      #   type: SECRET
+
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED

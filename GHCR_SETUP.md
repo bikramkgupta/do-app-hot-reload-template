@@ -2,6 +2,8 @@
 
 This guide covers building your own hot-reload images and publishing them to GitHub Container Registry (GHCR).
 
+If you're using the default images in the quick start, you can skip this guide.
+
 ## Build Your Own Image
 
 Don't see your runtime combo? Build your own:
