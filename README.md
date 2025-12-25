@@ -257,6 +257,7 @@ For app spec details (instance sizes, pricing, regions, component types), see ht
 |-------|---------|-------------|
 | `action` | deploy | `deploy`, `delete`, or `env-vars` |
 | `app_spec_path` | .do/app.yaml | Path to your app spec |
+| `include_only_env_vars` | *(empty)* | For `env-vars`: comma-separated list of vars to update (leave empty to update all) |
 
 ### Deploy
 
@@ -279,7 +280,11 @@ gh workflow run deploy-app.yml -f action=delete
 Update environment variables without a full container restart (~10 seconds vs 5+ minutes):
 
 ```bash
+# Update all app-specific env vars
 gh workflow run deploy-app.yml -f action=env-vars
+
+# Update only specific vars
+gh workflow run deploy-app.yml -f action=env-vars -f include_only_env_vars="DATABASE_URL,STRIPE_SECRET_KEY"
 ```
 
 **How it works:**

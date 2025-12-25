@@ -58,8 +58,11 @@ gh workflow run deploy-app.yml -f action=deploy
 # Delete
 gh workflow run deploy-app.yml -f action=delete
 
-# Fast env var update (no container restart, ~10 seconds)
+# Fast env var update - all vars (no container restart, ~10 seconds)
 gh workflow run deploy-app.yml -f action=env-vars
+
+# Fast env var update - specific vars only
+gh workflow run deploy-app.yml -f action=env-vars -f include_only_env_vars="DATABASE_URL,STRIPE_SECRET_KEY"
 ```
 
 ### Fast Environment Variable Updates
@@ -70,6 +73,10 @@ The `env-vars` action provides a fast way to update environment variables withou
 2. Substitutes GitHub secrets (`${SECRET_NAME}` → actual values)
 3. Writes `.env` file to the running container via do-app-sandbox
 4. Triggers dev server restart (not container restart)
+
+**Options:**
+- Leave `include_only_env_vars` empty to update all app-specific vars
+- Set `include_only_env_vars` to a comma-separated list to update only those vars
 
 **When to use:**
 - Changed a secret in GitHub Secrets

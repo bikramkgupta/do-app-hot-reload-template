@@ -17,6 +17,10 @@ on:
         description: 'Path to app spec file'
         required: false
         default: '.do/app.yaml'
+      include_only_env_vars:
+        description: 'Comma-separated list of env vars to update (leave empty to update all)'
+        required: false
+        default: ''
 
 # Secrets available for ${VAR} substitution in app specs
 # Add your secrets to GitHub Secrets, use ${SECRET_NAME} in your app spec
@@ -275,12 +279,21 @@ jobs:
           SPEC_PATH="${{ inputs.app_spec_path }}"
           APP_ID="${{ steps.appid.outputs.app_id }}"
           COMPONENT_NAME="${{ steps.appinfo.outputs.component_name }}"
+          INCLUDE_ONLY="${{ inputs.include_only_env_vars }}"
 
           # System vars to exclude (infrastructure/platform vars)
           EXCLUDE_VARS="GITHUB_REPO_URL|GITHUB_TOKEN|GITHUB_BRANCH|GITHUB_SYNC_INTERVAL|WORKSPACE_PATH|DEV_START_COMMAND|APP_DIR|PRE_DEPLOY_COMMAND|PRE_DEPLOY_TIMEOUT|POST_DEPLOY_COMMAND|POST_DEPLOY_TIMEOUT|BASE_URL|APP_URL|APP_DOMAIN|APP_ID|COMMIT_HASH|PUBLIC_URL|ENABLE_DEV_HEALTH|DEV_HEALTH_PORT|WELCOME_PAGE_PORT|GITHUB_REPO_FOLDER"
 
           # Extract env vars from spec, filter system vars, substitute secrets
           echo "Extracting environment variables from $SPEC_PATH..."
+
+          # If include_only is set, show which vars will be updated
+          if [ -n "$INCLUDE_ONLY" ]; then
+            echo "Filtering to only include: $INCLUDE_ONLY"
+          else
+            echo "Updating all app-specific environment variables"
+          fi
+          echo ""
 
           # Create .env content
           ENV_CONTENT=""
@@ -295,6 +308,15 @@ jobs:
             if echo "$KEY" | grep -qE "^($EXCLUDE_VARS)$"; then
               echo "  Skipping system var: $KEY"
               continue
+            fi
+
+            # If include_only is set, check if this var is in the list
+            if [ -n "$INCLUDE_ONLY" ]; then
+              # Convert comma-separated list to grep pattern
+              if ! echo ",$INCLUDE_ONLY," | grep -q ",$KEY,"; then
+                echo "  Skipping (not in include list): $KEY"
+                continue
+              fi
             fi
 
             # Skip empty values
@@ -339,8 +361,14 @@ jobs:
             echo "::warning::No app-specific environment variables found to update."
             echo "## No Environment Variables to Update" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "All variables in the app spec are either system vars or empty." >> $GITHUB_STEP_SUMMARY
-            echo "Add app-specific variables (DATABASE_URL, API keys, etc.) to your app spec." >> $GITHUB_STEP_SUMMARY
+            if [ -n "$INCLUDE_ONLY" ]; then
+              echo "No variables matched the include filter: \`$INCLUDE_ONLY\`" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Check that the variable names are correct and exist in your app spec." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "All variables in the app spec are either system vars or empty." >> $GITHUB_STEP_SUMMARY
+              echo "Add app-specific variables (DATABASE_URL, API keys, etc.) to your app spec." >> $GITHUB_STEP_SUMMARY
+            fi
             exit 0
           fi
 
@@ -368,11 +396,15 @@ ${ENV_CONTENT}ENVEOF"
         run: |
           APP_NAME="${{ steps.appinfo.outputs.app_name }}"
           COMPONENT_NAME="${{ steps.appinfo.outputs.component_name }}"
+          INCLUDE_ONLY="${{ inputs.include_only_env_vars }}"
 
           echo "## Environment Variables Updated" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**App:** $APP_NAME" >> $GITHUB_STEP_SUMMARY
           echo "**Component:** $COMPONENT_NAME" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$INCLUDE_ONLY" ]; then
+            echo "**Filter:** Only updated: \`$INCLUDE_ONLY\`" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "The dev server will restart automatically to load the new environment variables." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
