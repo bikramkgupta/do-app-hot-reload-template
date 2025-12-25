@@ -10,8 +10,15 @@
 # - Tip: for faster dev builds, set your package.json dev script to use Turbopack:
 #     "dev": "next dev --turbopack"
 #
+# For subfolder apps, set APP_DIR in your app spec:
+#   APP_DIR=/workspaces/app/application
+#
 
 set -e
+
+# Change to app directory (defaults to current dir, set APP_DIR for subfolders)
+APP_DIR="${APP_DIR:-$(pwd)}"
+cd "$APP_DIR" || exit 1
 
 # Create .npmrc for peer dependency compatibility
 echo "legacy-peer-deps=true" > .npmrc

@@ -7,8 +7,15 @@
 # - Auto-detects requirements changes and reinstalls (polls every GITHUB_SYNC_INTERVAL seconds)
 # - Runs uvicorn with --reload for hot reload
 #
+# For subfolder apps, set APP_DIR in your app spec:
+#   APP_DIR=/workspaces/app/application
+#
 
 set -euo pipefail
+
+# Change to app directory (defaults to current dir, set APP_DIR for subfolders)
+APP_DIR="${APP_DIR:-$(pwd)}"
+cd "$APP_DIR" || exit 1
 
 HASH_FILE=".deps_hash"
 

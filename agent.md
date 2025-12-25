@@ -116,8 +116,9 @@ See [pricing](https://docs.digitalocean.com/products/app-platform/details/pricin
 | Key | Default | Description |
 |-----|---------|-------------|
 | `GITHUB_TOKEN` | - | For private repos |
-| `GITHUB_BRANCH` | main | Branch to sync |
+| `GITHUB_BRANCH` | default | Branch to sync |
 | `GITHUB_SYNC_INTERVAL` | 15 | Sync frequency (seconds) |
+| `APP_DIR` | - | Working directory for startup scripts (e.g., `/workspaces/app/application` for subfolder apps) |
 | `PRE_DEPLOY_COMMAND` | - | Optional hook to run before app starts (paths relative to repo root) |
 | `PRE_DEPLOY_FOLDER` | - | Legacy: run PRE_DEPLOY from a specific folder (not recommended for new users) |
 | `POST_DEPLOY_COMMAND` | - | Optional hook to run after app starts (paths relative to repo root) |

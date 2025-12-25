@@ -7,8 +7,15 @@
 # - Uses air for hot reload if available, falls back to go run
 # - Builds and runs on port 8080
 #
+# For subfolder apps, set APP_DIR in your app spec:
+#   APP_DIR=/workspaces/app/application
+#
 
 set -euo pipefail
+
+# Change to app directory (defaults to current dir, set APP_DIR for subfolders)
+APP_DIR="${APP_DIR:-$(pwd)}"
+cd "$APP_DIR" || exit 1
 
 HASH_FILE=".deps_hash"
 CURRENT_HASH=$(sha256sum go.mod go.sum 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "none")

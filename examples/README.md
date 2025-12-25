@@ -12,16 +12,42 @@ If you're following the quick start, just copy one script to your repo root as `
 
 1. Copy the appropriate script to your repo root as `dev_startup.sh`
 2. Make it executable: `chmod +x dev_startup.sh`
-3. Set `DEV_START_COMMAND` to `bash dev_startup.sh` in the DO Console
+3. Set `DEV_START_COMMAND` to `bash dev_startup.sh` in your app spec
+
+### Subfolder Apps
+
+If your app lives in a subfolder (e.g., `application/`), you have two options:
+
+**Option 1: Set APP_DIR** (recommended for monorepos)
+```yaml
+envs:
+  - key: APP_DIR
+    value: "/workspaces/app/application"
+    scope: RUN_TIME
+  - key: DEV_START_COMMAND
+    value: "bash dev_startup.sh"
+    scope: RUN_TIME
+```
+
+**Option 2: Use path in DEV_START_COMMAND**
+```yaml
+envs:
+  - key: DEV_START_COMMAND
+    value: "bash application/dev_startup.sh"
+    scope: RUN_TIME
+```
+Note: With Option 2, the script runs from `/workspaces/app` (repo root), so you must set `APP_DIR` in your app spec or add `cd /workspaces/app/application` to your script.
 
 ## Available Examples
 
 | Script | Framework | Features |
 |--------|-----------|----------|
-| `dev_startup_nextjs.sh` | Next.js / Node.js | npm install with change detection, legacy-peer-deps |
+| `dev_startup_nextjs.sh` | Next.js / Node.js | npm install with change detection, HMR dev server |
 | `dev_startup_python.sh` | FastAPI / Python | uv or pip, uvicorn with --reload |
 | `dev_startup_go.sh` | Go | go mod tidy, air hot reload |
 | `dev_startup_rails.sh` | Ruby on Rails | bundle install, db migrations |
+
+All scripts support the `APP_DIR` environment variable for subfolder apps.
 
 ## Why Use These?
 
