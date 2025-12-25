@@ -197,7 +197,39 @@ else
 fi
 
 if [ -n "${DEV_START_COMMAND:-}" ]; then
-    echo "Executing DEV_START_COMMAND: $DEV_START_COMMAND"
+    echo "Command: $DEV_START_COMMAND"
+    echo "Working directory: $APP_WORKDIR"
+    echo ""
+
+    # Always show diagnostic info so user can debug even without shell access
+    if [ -d "$WORKSPACE/.git" ]; then
+        echo "Git Status:"
+        echo "  Branch: $(cd "$WORKSPACE" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')"
+        echo "  Commit: $(cd "$WORKSPACE" && git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+        echo ""
+    fi
+
+    echo "Workspace contents ($WORKSPACE):"
+    ls -la "$WORKSPACE" 2>/dev/null | head -20
+    echo ""
+
+    # If command contains a path to a .sh file, validate it exists
+    if [[ "$DEV_START_COMMAND" =~ ([a-zA-Z0-9_/.+-]+\.sh) ]]; then
+        SCRIPT_PATH="${BASH_REMATCH[1]}"
+        echo "Checking script path: $SCRIPT_PATH"
+        if [ -f "$APP_WORKDIR/$SCRIPT_PATH" ]; then
+            echo "  ✓ File exists at $APP_WORKDIR/$SCRIPT_PATH"
+        elif [ -f "$WORKSPACE/$SCRIPT_PATH" ]; then
+            echo "  ✓ File exists at $WORKSPACE/$SCRIPT_PATH"
+        else
+            echo "  ✗ File NOT found at $APP_WORKDIR/$SCRIPT_PATH"
+            echo ""
+            echo "Looking for .sh files in workspace..."
+            find "$WORKSPACE" -name "*.sh" -type f 2>/dev/null | head -10
+        fi
+        echo ""
+    fi
+
     echo "Note: Welcome page server will be stopped when your app starts on port 8080"
     cd "$APP_WORKDIR"
     
@@ -256,43 +288,13 @@ if [ -n "${DEV_START_COMMAND:-}" ]; then
         echo "Application Failed (exit code: $EXIT_CODE)"
         echo "=========================================="
         echo ""
-        echo "Command: ${DEV_START_COMMAND}"
-        echo "Working directory: $(pwd)"
-        echo ""
-
-        # Show git info if available
-        if [ -d "$WORKSPACE/.git" ]; then
-            echo "Git Status:"
-            echo "  Branch: $(cd "$WORKSPACE" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')"
-            echo "  Commit: $(cd "$WORKSPACE" && git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
-            echo ""
-        fi
-
-        echo "Workspace contents ($WORKSPACE):"
-        ls -la "$WORKSPACE" 2>/dev/null | head -15
-        echo ""
-
-        # If command contains a path to a .sh file, check if that path exists
-        if [[ "$DEV_START_COMMAND" =~ ([a-zA-Z0-9_/.+-]+\.sh) ]]; then
-            SCRIPT_PATH="${BASH_REMATCH[1]}"
-            echo "Checking script path: $SCRIPT_PATH"
-            if [ -f "$WORKSPACE/$SCRIPT_PATH" ]; then
-                echo "  ✓ File exists at $WORKSPACE/$SCRIPT_PATH"
-            else
-                echo "  ✗ File NOT found at $WORKSPACE/$SCRIPT_PATH"
-                echo ""
-                echo "Looking for .sh files in workspace..."
-                find "$WORKSPACE" -name "*.sh" -type f 2>/dev/null | head -10
-            fi
-            echo ""
-        fi
-
         echo "Container will stay alive for debugging."
-        echo "Health check: http://your-app:9090/dev_health"
+        echo "Health check is running on port 9090."
         echo ""
-        echo "Debug tips:"
-        echo "  - Shell in via: doctl apps console <app-id>"
+        echo "Debug options:"
+        echo "  - Shell in via: doctl apps console <app-id> <component-name>"
         echo "  - Or use do-app-sandbox for remote access"
+        echo "  - Check the diagnostic info printed above"
         echo ""
 
         # Keep container alive for debugging
