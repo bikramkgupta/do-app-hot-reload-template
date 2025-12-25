@@ -25,7 +25,6 @@ POST_DEPLOY_TIMEOUT="${POST_DEPLOY_TIMEOUT:-300}"
 # Tracking files
 LAST_JOB_COMMIT_FILE="/tmp/last_job_commit.txt"
 JOB_REPOS_DIR="/tmp/job-repos"
-MONOREPO_CACHE="/tmp/monorepo-cache"  # legacy (undocumented)
 
 # Colors for output
 RED='\033[0;31m'
