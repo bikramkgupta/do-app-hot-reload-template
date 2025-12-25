@@ -49,7 +49,7 @@ Example snippet:
         scope: RUN_TIME
 ```
 
-## Deploy / Delete
+## Deploy / Delete / Update Env Vars
 
 ```bash
 # Deploy
@@ -57,7 +57,29 @@ gh workflow run deploy-app.yml -f action=deploy
 
 # Delete
 gh workflow run deploy-app.yml -f action=delete
+
+# Fast env var update (no container restart, ~10 seconds)
+gh workflow run deploy-app.yml -f action=env-vars
 ```
+
+### Fast Environment Variable Updates
+
+The `env-vars` action provides a fast way to update environment variables without triggering a full container restart:
+
+1. Parses app-specific env vars from your app spec (filters out system vars)
+2. Substitutes GitHub secrets (`${SECRET_NAME}` → actual values)
+3. Writes `.env` file to the running container via do-app-sandbox
+4. Triggers dev server restart (not container restart)
+
+**When to use:**
+- Changed a secret in GitHub Secrets
+- Need to update API keys, database URLs, etc.
+- Want to test with different config without waiting 5+ minutes
+
+**Requirements:**
+- App must already be deployed and healthy
+- Uses the same `DIGITALOCEAN_ACCESS_TOKEN` secret as deploy
+- Dev startup script must support `.env_updated` detection (included in all example scripts)
 
 ## Details & Reference
 

@@ -98,6 +98,9 @@ gh workflow run deploy-app.yml -f action=deploy
 
 # Delete
 gh workflow run deploy-app.yml -f action=delete
+
+# Fast env var update (after deploy, ~10 seconds)
+gh workflow run deploy-app.yml -f action=env-vars
 ```
 
 Or use the GitHub UI: Actions → "Deploy to DigitalOcean App Platform" → Run workflow
@@ -149,10 +152,10 @@ Note: `PRE_DEPLOY_FOLDER` / `POST_DEPLOY_FOLDER` (and `GITHUB_REPO_FOLDER`) stil
 
 | Framework | Script | Key Features |
 |-----------|--------|--------------|
-| Next.js / Node | `dev_startup_nextjs.sh` | Change detection, auto-reinstall |
-| Python / FastAPI | `dev_startup_python.sh` | uv or pip, uvicorn with --reload |
-| Go | `dev_startup_go.sh` | go mod tidy, air hot reload |
-| Rails | `dev_startup_rails.sh` | bundle install, db migrations |
+| Next.js / Node | `dev_startup_nextjs.sh` | Change detection, auto-reinstall, fast env updates |
+| Python / FastAPI | `dev_startup_python.sh` | uv or pip, uvicorn with --reload, fast env updates |
+| Go | `dev_startup_go.sh` | go mod tidy, air hot reload, fast env updates |
+| Rails | `dev_startup_rails.sh` | bundle install, db migrations, fast env updates |
 
 **Simple example:**
 
@@ -252,7 +255,7 @@ For app spec details (instance sizes, pricing, regions, component types), see ht
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `action` | deploy | `deploy` or `delete` |
+| `action` | deploy | `deploy`, `delete`, or `env-vars` |
 | `app_spec_path` | .do/app.yaml | Path to your app spec |
 
 ### Deploy
@@ -270,6 +273,29 @@ gh workflow run deploy-app.yml -f action=deploy -f app_spec_path=.do/staging.yam
 ```bash
 gh workflow run deploy-app.yml -f action=delete
 ```
+
+### Fast Environment Variable Updates
+
+Update environment variables without a full container restart (~10 seconds vs 5+ minutes):
+
+```bash
+gh workflow run deploy-app.yml -f action=env-vars
+```
+
+**How it works:**
+1. Parses app-specific env vars from your app spec (filters out system vars)
+2. Substitutes GitHub secrets (`${SECRET_NAME}` → actual values)
+3. Writes `.env` file to the running container via [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox)
+4. Triggers dev server restart (not container restart)
+
+**When to use:**
+- Changed a secret in GitHub Secrets
+- Need to update API keys, database URLs, etc.
+- Want to test with different config quickly
+
+**Requirements:**
+- App must already be deployed and healthy
+- Dev startup script must support `.env_updated` detection (included in all example scripts)
 
 ## Important Notes
 

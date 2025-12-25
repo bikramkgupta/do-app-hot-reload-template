@@ -6,6 +6,7 @@
 # - Auto-detects Gemfile changes and runs bundle install
 # - Runs database migrations
 # - Starts Rails server on port 8080
+# - Supports fast env var updates via .env_updated trigger (GitHub Actions env-vars action)
 #
 # For subfolder apps, set APP_DIR in your app spec:
 #   APP_DIR=/workspaces/app/application
@@ -74,6 +75,7 @@ start_server
 
 # Loop forever:
 # - If Gemfile/Gemfile.lock changes: bundle install + migrations + restart server
+# - If .env_updated trigger exists: restart server (fast env var update)
 # - If server dies: restart it
 while true; do
     sleep "$SYNC_INTERVAL"
@@ -86,6 +88,15 @@ while true; do
             rm -f .server_pid
             start_server
         fi
+    fi
+
+    # Check for env update trigger (fast env var update via GitHub Actions)
+    if [ -f ".env_updated" ]; then
+        echo ".env_updated detected; restarting server to load new environment variables..."
+        rm -f .env_updated
+        stop_server
+        start_server
+        continue
     fi
 
     CURRENT_HASH=$(sha256sum Gemfile Gemfile.lock 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "none")
