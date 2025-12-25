@@ -24,6 +24,7 @@ fi
 # Display environment configuration
 echo "Configuration:"
 echo "  Repository: ${GITHUB_REPO_URL:-not set}"
+echo "  Branch: ${GITHUB_BRANCH:-default}"
 echo "  Workspace: ${WORKSPACE_PATH:-/workspaces/app}"
 echo "  Sync Interval: ${GITHUB_SYNC_INTERVAL:-15}s"
 echo ""
@@ -71,19 +72,41 @@ if [ -n "$REPO_URL" ]; then
         REPO_URL_WITH_AUTH="$REPO_URL"
     fi
 
+    # Determine target branch (use GITHUB_BRANCH if set, otherwise default)
+    TARGET_BRANCH="${GITHUB_BRANCH:-}"
+
     if [ -d "$WORKSPACE/.git" ]; then
         echo "Repository exists. Pulling latest changes..."
         cd "$WORKSPACE"
         git fetch origin 2>&1 || true
-        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-        git pull origin "$CURRENT_BRANCH" 2>&1 || echo "Warning: Pull failed, continuing..."
+
+        # If GITHUB_BRANCH is set, ensure we're on that branch
+        if [ -n "$TARGET_BRANCH" ]; then
+            CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+            if [ "$CURRENT_BRANCH" != "$TARGET_BRANCH" ]; then
+                echo "Switching to branch: $TARGET_BRANCH"
+                git checkout "$TARGET_BRANCH" 2>&1 || echo "Warning: Checkout failed, continuing..."
+            fi
+            git pull origin "$TARGET_BRANCH" 2>&1 || echo "Warning: Pull failed, continuing..."
+        else
+            CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+            git pull origin "$CURRENT_BRANCH" 2>&1 || echo "Warning: Pull failed, continuing..."
+        fi
     else
         echo "Cloning repository..."
         mkdir -p "$WORKSPACE"
         if [ "$(ls -A "$WORKSPACE" 2>/dev/null)" ]; then
             rm -rf "${WORKSPACE:?}/"* "${WORKSPACE:?}/".[!.]* "${WORKSPACE:?}/"..?* 2>/dev/null || true
         fi
-        git clone "$REPO_URL_WITH_AUTH" "$WORKSPACE" 2>&1 || echo "Warning: Clone failed, continuing..."
+
+        # Clone with specific branch if GITHUB_BRANCH is set
+        if [ -n "$TARGET_BRANCH" ]; then
+            echo "Cloning branch: $TARGET_BRANCH"
+            git clone -b "$TARGET_BRANCH" "$REPO_URL_WITH_AUTH" "$WORKSPACE" 2>&1 || echo "Warning: Clone failed, continuing..."
+        else
+            git clone "$REPO_URL_WITH_AUTH" "$WORKSPACE" 2>&1 || echo "Warning: Clone failed, continuing..."
+        fi
+
         if [ -n "$AUTH_TOKEN" ] && [ -d "$WORKSPACE/.git" ]; then
             cd "$WORKSPACE"
             git remote set-url origin "$REPO_URL_WITH_AUTH" 2>/dev/null || true

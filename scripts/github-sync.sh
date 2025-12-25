@@ -141,20 +141,20 @@ initial_clone() {
     # Create parent directory
     mkdir -p "$(dirname "$target_dir")"
 
-    # Clone
-    if git clone "$auth_url" "$target_dir" 2>&1; then
+    # Clone (with specific branch if requested)
+    local clone_cmd="git clone"
+    if [ -n "$branch" ]; then
+        clone_cmd="git clone -b $branch"
+        log_info "Cloning branch: $branch"
+    fi
+
+    if $clone_cmd "$auth_url" "$target_dir" 2>&1; then
         log_info "Successfully cloned repository"
         cd "$target_dir"
 
         # Configure remote with auth for future pulls
         if [ -n "$auth_token" ]; then
             git remote set-url origin "$auth_url"
-        fi
-
-        # Checkout specific branch if requested
-        if [ -n "$branch" ]; then
-            log_info "Checking out branch: $branch"
-            git checkout "$branch" 2>&1 || log_warn "Failed to checkout branch: $branch"
         fi
 
         return 0
