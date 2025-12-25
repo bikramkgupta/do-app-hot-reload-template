@@ -7,6 +7,7 @@
 # - Auto-detects package.json changes and reinstalls (polls every GITHUB_SYNC_INTERVAL seconds)
 # - Falls back to hard rebuild if install fails
 # - Runs the dev server (best for hot reload / iteration)
+# - Supports fast env var updates via .env_updated trigger (GitHub Actions env-vars action)
 # - Tip: for faster dev builds, set your package.json dev script to use Turbopack:
 #     "dev": "next dev --turbopack"
 #
@@ -78,6 +79,7 @@ start_server
 
 # Loop forever:
 # - If package.json changes: npm install + restart dev server
+# - If .env_updated trigger exists: restart dev server (fast env var update)
 # - If server dies: restart it
 while true; do
     sleep "$SYNC_INTERVAL"
@@ -90,6 +92,15 @@ while true; do
             rm -f .server_pgid
             start_server
         fi
+    fi
+
+    # Check for env update trigger (fast env var update via GitHub Actions)
+    if [ -f ".env_updated" ]; then
+        echo ".env_updated detected; restarting dev server to load new environment variables..."
+        rm -f .env_updated
+        stop_server
+        start_server
+        continue
     fi
 
     # Check for dependency changes
