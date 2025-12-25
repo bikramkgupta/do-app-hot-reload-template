@@ -134,6 +134,15 @@ See [pricing](https://docs.digitalocean.com/products/app-platform/details/pricin
 
 ---
 
+## Post-Deployment: When to Redeploy
+
+After initial deployment, most code changes **auto-sync** (no action needed). See [app-platform-deployment-guidance.md](app-platform-deployment-guidance.md) for the decision logic on when to:
+- **Wait** (app code, dependencies → auto-sync)
+- **Update spec** (`app.yaml` changes → `doctl apps update`)
+- **Restart** (`dev_startup.sh` changes → `doctl apps create-deployment`)
+
+---
+
 ## Remote Troubleshooting with do-app-sandbox
 
 **AI agents can remotely control and troubleshoot the running container** using [do-app-sandbox](https://github.com/bikramkgupta/do-app-sandbox).
