@@ -17,9 +17,8 @@ REPO_URL="${GITHUB_REPO_URL:-}"
 AUTH_TOKEN="${GITHUB_TOKEN:-}"
 WORKSPACE="${WORKSPACE_PATH:-/workspaces/app}"
 SYNC_INTERVAL="${GITHUB_SYNC_INTERVAL:-15}"
-REPO_FOLDER="${GITHUB_REPO_FOLDER:-}"
+REPO_FOLDER="${GITHUB_REPO_FOLDER:-}"  # legacy (undocumented)
 REPO_BRANCH="${GITHUB_BRANCH:-}"
-MONOREPO_CACHE="/tmp/monorepo-cache"
 
 # Colors for output
 RED='\033[0;31m'
@@ -37,53 +36,6 @@ log_warn() {
 
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Generate unique hash for repo URL
-get_repo_hash() {
-    echo "$1" | md5sum | cut -d' ' -f1
-}
-
-# Sync monorepo subfolder to workspace
-sync_monorepo_folder() {
-    local cache_dir="$1"
-    local folder_path="$2"
-    local target_workspace="$3"
-
-    # Check if folder exists in the cloned repo
-    if [ ! -d "$cache_dir/$folder_path" ]; then
-        log_error "Folder '$folder_path' not found in repository"
-        log_info "Available folders in repo root:"
-        ls -la "$cache_dir/" || true
-        return 1
-    fi
-
-    log_info "Syncing folder: $folder_path -> $target_workspace"
-
-    # Create target workspace if it doesn't exist
-    mkdir -p "$target_workspace"
-
-    # Use rsync to sync folder contents (not the folder itself)
-    # --delete ensures removed files are also removed from workspace
-    # -a preserves permissions and timestamps
-    # Exclude build artifacts and dependencies that should be managed by dev scripts
-    # NOTE: We do NOT exclude 'storage' as it may be a source code directory
-    if rsync -a --delete \
-        --exclude 'node_modules' \
-        --exclude '.next' \
-        --exclude '__pycache__' \
-        --exclude '*.pyc' \
-        --exclude '*.sqlite3' \
-        --exclude '*.sqlite3-*' \
-        --exclude 'vendor/bundle' \
-        --exclude '.bundle' \
-        "$cache_dir/$folder_path/" "$target_workspace/"; then
-        log_info "Folder sync completed successfully"
-        return 0
-    else
-        log_error "Failed to sync folder"
-        return 1
-    fi
 }
 
 # Get authenticated repo URL
@@ -304,85 +256,43 @@ sync_repo() {
     local auth_url=$(get_auth_url "$REPO_URL" "$AUTH_TOKEN")
     log_info "Repository URL: $REPO_URL"
 
-    # ========================================
-    # MONOREPO MODE
-    # ========================================
+    # Default behavior: always sync the full repo into WORKSPACE (Mode 1).
+    # GITHUB_REPO_FOLDER is treated as legacy-only and does not change sync behavior.
     if [ -n "$REPO_FOLDER" ]; then
-        log_info "Monorepo mode enabled"
-
-        local repo_hash=$(get_repo_hash "$REPO_URL")
-        local cache_dir="$MONOREPO_CACHE/$repo_hash"
-
-        # Initial clone if cache doesn't exist
-        if [ ! -d "$cache_dir/.git" ]; then
-            if ! initial_clone "$REPO_URL" "$cache_dir" "$REPO_BRANCH" "$AUTH_TOKEN"; then
-                return 1
-            fi
-
-            # First time: always sync folder
-            if ! sync_monorepo_folder "$cache_dir" "$REPO_FOLDER" "$WORKSPACE"; then
-                log_error "Failed to sync monorepo folder"
-                return 1
-            fi
-
-            show_commit_info "$cache_dir"
-            execute_deploy_jobs
-            return 0
-        fi
-
-        # Check for changes (fetch + compare commits)
-        if check_for_changes "$cache_dir" "$REPO_BRANCH"; then
-            # Changes detected - pull and sync
-            log_info "Pulling changes..."
-            pull_changes "$cache_dir" "$REPO_BRANCH"
-
-            # Sync the specific folder to workspace
-            if ! sync_monorepo_folder "$cache_dir" "$REPO_FOLDER" "$WORKSPACE"; then
-                log_error "Failed to sync monorepo folder"
-                return 1
-            fi
-
-            show_commit_info "$cache_dir"
-            execute_deploy_jobs
-        fi
-        # If no changes, do nothing (already logged in check_for_changes)
-
-    # ========================================
-    # REGULAR MODE (single repository)
-    # ========================================
-    else
-        log_info "Regular mode (single repository)"
-
-        # Initial clone if workspace doesn't exist
-        if [ ! -d "$WORKSPACE/.git" ]; then
-            # Clean up any existing files
-            if [ -d "$WORKSPACE" ] && [ "$(ls -A "$WORKSPACE" 2>/dev/null)" ]; then
-                log_warn "Workspace not empty. Cleaning before clone..."
-                rm -rf "${WORKSPACE:?}/"* "${WORKSPACE:?}"/.[!.]* "${WORKSPACE:?}"/..?* 2>/dev/null || true
-            fi
-
-            if ! initial_clone "$REPO_URL" "$WORKSPACE" "$REPO_BRANCH" "$AUTH_TOKEN"; then
-                return 1
-            fi
-
-            cleanup_lock_files "$WORKSPACE"
-            show_commit_info "$WORKSPACE"
-            execute_deploy_jobs
-            return 0
-        fi
-
-        # Check for changes (fetch + compare commits)
-        if check_for_changes "$WORKSPACE" "$REPO_BRANCH"; then
-            # Changes detected - pull
-            log_info "Pulling changes..."
-            pull_changes "$WORKSPACE" "$REPO_BRANCH"
-
-            cleanup_lock_files "$WORKSPACE"
-            show_commit_info "$WORKSPACE"
-            execute_deploy_jobs
-        fi
-        # If no changes, do nothing (already logged in check_for_changes)
+        log_warn "GITHUB_REPO_FOLDER is set (legacy). Sync still mirrors the full repo to WORKSPACE_PATH. Use paths in *_COMMAND if your scripts live in a subfolder."
     fi
+
+    log_info "Regular mode (single repository - full repo workspace)"
+
+    # Initial clone if workspace doesn't exist
+    if [ ! -d "$WORKSPACE/.git" ]; then
+        # Clean up any existing files
+        if [ -d "$WORKSPACE" ] && [ "$(ls -A "$WORKSPACE" 2>/dev/null)" ]; then
+            log_warn "Workspace not empty. Cleaning before clone..."
+            rm -rf "${WORKSPACE:?}/"* "${WORKSPACE:?}"/.[!.]* "${WORKSPACE:?}"/..?* 2>/dev/null || true
+        fi
+
+        if ! initial_clone "$REPO_URL" "$WORKSPACE" "$REPO_BRANCH" "$AUTH_TOKEN"; then
+            return 1
+        fi
+
+        cleanup_lock_files "$WORKSPACE"
+        show_commit_info "$WORKSPACE"
+        execute_deploy_jobs
+        return 0
+    fi
+
+    # Check for changes (fetch + compare commits)
+    if check_for_changes "$WORKSPACE" "$REPO_BRANCH"; then
+        # Changes detected - pull
+        log_info "Pulling changes..."
+        pull_changes "$WORKSPACE" "$REPO_BRANCH"
+
+        cleanup_lock_files "$WORKSPACE"
+        show_commit_info "$WORKSPACE"
+        execute_deploy_jobs
+    fi
+    # If no changes, do nothing (already logged in check_for_changes)
 }
 
 # Main sync loop
@@ -390,16 +300,15 @@ main() {
     log_info "GitHub Sync Service Starting..."
     log_info "Sync interval: ${SYNC_INTERVAL}s"
 
-    # Display monorepo configuration if enabled
-    if [ -n "$REPO_FOLDER" ]; then
-        log_info "Monorepo configuration detected:"
-        log_info "  - Repository: ${REPO_URL:-not set}"
-        log_info "  - Folder: $REPO_FOLDER"
-        log_info "  - Branch: ${REPO_BRANCH:-auto-detect}"
+    # Initial sync
+    # If startup.sh successfully performed the initial sync, it will create this marker.
+    # In that case, avoid doing an immediate duplicate sync here.
+    local startup_marker="/tmp/startup_sync_done"
+    if [ -f "$startup_marker" ]; then
+        log_info "Startup sync marker detected ($startup_marker). Skipping immediate initial sync."
+    else
+        sync_repo
     fi
-
-    # Initial sync (always runs on startup)
-    sync_repo
 
     # Continuous sync loop
     while true; do
@@ -407,74 +316,6 @@ main() {
         sleep "$SYNC_INTERVAL"
         sync_repo
     done
-}
-
-# Create or update monorepo cache (exported for use by startup.sh)
-# This function ensures the cache exists and is up to date
-create_or_update_monorepo_cache() {
-    local repo_url="$1"
-    local repo_folder="$2"
-    local target_branch="${3:-}"
-    local auth_token="${GITHUB_TOKEN:-}"
-
-    log_info "Monorepo cache creation/update requested"
-    log_info "Repository: $repo_url"
-    log_info "Folder: $repo_folder"
-    log_info "Branch: ${target_branch:-auto-detect}"
-
-    local auth_url=$(get_auth_url "$repo_url" "$auth_token")
-    local repo_hash=$(get_repo_hash "$repo_url")
-    local cache_dir="$MONOREPO_CACHE/$repo_hash"
-
-    log_info "Cache directory: $cache_dir"
-
-    if [ -d "$cache_dir/.git" ]; then
-        log_info "Monorepo cache exists. Pulling latest changes..."
-        cd "$cache_dir"
-
-        git fetch origin 2>&1 || true
-
-        local branch="$target_branch"
-        if [ -z "$branch" ]; then
-            branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-        fi
-
-        git checkout "$branch" 2>&1 || true
-        git pull origin "$branch" 2>&1 || log_warn "Pull failed, using current state"
-
-        log_info "Successfully pulled latest changes to cache"
-    else
-        log_info "Cloning monorepo to cache for the first time..."
-        mkdir -p "$MONOREPO_CACHE"
-
-        if git clone "$auth_url" "$cache_dir" 2>&1; then
-            log_info "Successfully cloned monorepo to cache"
-            cd "$cache_dir"
-
-            if [ -n "$auth_token" ]; then
-                git remote set-url origin "$auth_url"
-            fi
-
-            if [ -n "$target_branch" ]; then
-                log_info "Checking out branch: $target_branch"
-                git checkout "$target_branch" 2>&1 || true
-            fi
-        else
-            log_error "Failed to clone monorepo"
-            return 1
-        fi
-    fi
-
-    # Validate folder exists
-    if [ ! -d "$cache_dir/$repo_folder" ]; then
-        log_error "Folder '$repo_folder' not found in repository"
-        ls -la "$cache_dir/" || true
-        return 1
-    fi
-
-    MONOREPO_CACHE_DIR="$cache_dir"
-    log_info "Monorepo cache ready at: $MONOREPO_CACHE_DIR"
-    return 0
 }
 
 # Run main function (only if not being sourced)

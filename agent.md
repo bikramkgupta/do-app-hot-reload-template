@@ -15,7 +15,9 @@ gh workflow run deploy-app.yml -f action=deploy
 
 Why this is useful: ~1 minute deploys and shell access for debugging even if the app fails.
 
-The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if the workflow runs in a different repo than the app (e.g., a central template) or you use GitHub Enterprise. For monorepos, set `GITHUB_REPO_FOLDER`.
+The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if the workflow runs in a different repo than the app (e.g., a central template) or you use GitHub Enterprise.
+
+All commands run relative to the repo root (synced to `/workspaces/app`). If your scripts live in a subfolder, include the path in the command (e.g. `bash application/dev_startup.sh`).
 
 If `GITHUB_REPO_URL` points to this template repo, you will see the welcome page until you point it to your app repo or add your own `dev_startup.sh` here.
 
@@ -35,6 +37,15 @@ Example snippet:
 
       - key: DEV_START_COMMAND
         value: "bash dev_startup.sh"
+        scope: RUN_TIME
+
+      # Optional deploy jobs (paths relative to repo root)
+      - key: PRE_DEPLOY_COMMAND
+        value: ""
+        scope: RUN_TIME
+
+      - key: POST_DEPLOY_COMMAND
+        value: ""
         scope: RUN_TIME
 ```
 
@@ -106,8 +117,11 @@ See [pricing](https://docs.digitalocean.com/products/app-platform/details/pricin
 |-----|---------|-------------|
 | `GITHUB_TOKEN` | - | For private repos |
 | `GITHUB_BRANCH` | main | Branch to sync |
-| `GITHUB_REPO_FOLDER` | - | Monorepo subfolder |
 | `GITHUB_SYNC_INTERVAL` | 15 | Sync frequency (seconds) |
+| `PRE_DEPLOY_COMMAND` | - | Optional hook to run before app starts (paths relative to repo root) |
+| `PRE_DEPLOY_FOLDER` | - | Legacy: run PRE_DEPLOY from a specific folder (not recommended for new users) |
+| `POST_DEPLOY_COMMAND` | - | Optional hook to run after app starts (paths relative to repo root) |
+| `POST_DEPLOY_FOLDER` | - | Legacy: run POST_DEPLOY from a specific folder (not recommended for new users) |
 
 #### Scope Options
 

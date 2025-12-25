@@ -58,16 +58,14 @@ services:
         value: ""
         scope: RUN_TIME
 
-      # For monorepos: specify subfolder (e.g., "apps/web")
-      - key: GITHUB_REPO_FOLDER
-        value: ""
-        scope: RUN_TIME
-
       # === Startup Command ===
       # Uses dev_startup.sh which handles npm install automatically
       - key: DEV_START_COMMAND
         value: "bash dev_startup.sh"
         scope: RUN_TIME
+
+      # If your app lives in a subfolder, set an explicit path:
+      #   value: "bash application/dev_startup.sh"
 
       # === Sync Settings ===
       - key: GITHUB_SYNC_INTERVAL
@@ -82,6 +80,23 @@ services:
       # PRE_DEPLOY runs in strict mode and kills container on failure
       - key: PRE_DEPLOY_COMMAND
         value: ""
+        scope: RUN_TIME
+
+      # === Bindable variables (convenience) ===
+      - key: BASE_URL
+        value: "${APP_URL}"
+        scope: RUN_TIME
+      - key: APP_DOMAIN
+        value: "${APP_DOMAIN}"
+        scope: RUN_TIME
+      - key: APP_ID
+        value: "${APP_ID}"
+        scope: RUN_TIME
+      - key: COMMIT_HASH
+        value: "${_self.COMMIT_HASH}"
+        scope: RUN_TIME
+      - key: PUBLIC_URL
+        value: "${_self.PUBLIC_URL}"
         scope: RUN_TIME
 
 alerts:

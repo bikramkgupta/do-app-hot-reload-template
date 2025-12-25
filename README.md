@@ -28,7 +28,9 @@ If you use the Deploy button or Console, you will set env vars in App Platform. 
 
 Why this is useful: ~1 minute deploys and shell access for debugging even if the app fails.
 
-The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if the workflow runs in a different repo than the app (e.g., a central template) or you use GitHub Enterprise. For monorepos, set `GITHUB_REPO_FOLDER`.
+The workflow auto-fills `GITHUB_REPO_URL` for the current repo. Only change it if the workflow runs in a different repo than the app (e.g., a central template) or you use GitHub Enterprise.
+
+**All commands run relative to the repo root** (the repo is synced to `/workspaces/app`). If your scripts live in a subfolder, include the path in the command (example below).
 
 ## Quick Start (details)
 
@@ -120,6 +122,29 @@ If your secret is not listed in `.github/workflows/deploy-app.yml`, replace `CUS
 
 Your repository needs a `dev_startup.sh` script that handles dependency installation and starts your dev server.
 
+If your app lives in a subfolder, set `DEV_START_COMMAND` to point at it:
+
+```bash
+# Example: app lives under ./application
+bash application/dev_startup.sh
+```
+
+## Optional: Deploy jobs (PRE_DEPLOY / POST_DEPLOY)
+
+These are optional lifecycle hooks you can use for bootstrapping when a new commit is detected.
+
+- `PRE_DEPLOY_COMMAND` runs **before** your app starts (strict mode: failure stops the container startup).
+- `POST_DEPLOY_COMMAND` runs **after** your app starts (runs in background during initial startup; later runs are triggered by sync).
+
+Examples (paths are relative to repo root):
+
+```bash
+# Example: run DB setup script from a subfolder
+bash db-setup/dbsetup.sh
+```
+
+Note: `PRE_DEPLOY_FOLDER` / `POST_DEPLOY_FOLDER` (and `GITHUB_REPO_FOLDER`) still exist for backward compatibility, but new users should prefer explicit paths in the `*_COMMAND` values.
+
 **Copy an example from [`examples/`](examples/):**
 
 | Framework | Script | Key Features |
@@ -202,8 +227,11 @@ The health check runs on **port 9090** (separate from your app on port 8080). Th
 |----------|---------|-------------|
 | `GITHUB_TOKEN` | - | For private repos (use `${APP_GITHUB_TOKEN}`) |
 | `GITHUB_BRANCH` | main | Branch to sync |
-| `GITHUB_REPO_FOLDER` | - | Subfolder for monorepos |
 | `GITHUB_SYNC_INTERVAL` | 15 | Sync frequency (seconds) |
+| `PRE_DEPLOY_COMMAND` | - | Optional hook to run before app starts (paths relative to repo root) |
+| `PRE_DEPLOY_FOLDER` | - | Legacy: run PRE_DEPLOY from a specific folder (not recommended for new users) |
+| `POST_DEPLOY_COMMAND` | - | Optional hook to run after app starts (paths relative to repo root) |
+| `POST_DEPLOY_FOLDER` | - | Legacy: run POST_DEPLOY from a specific folder (not recommended for new users) |
 
 ### Scope Options
 
@@ -252,7 +280,7 @@ gh workflow run deploy-app.yml -f action=delete
 
 ## Multi-component Applications
 
-DigitalOcean App Platform lets you run multiple components in one app. Each component can use this template image and its own `GITHUB_REPO_FOLDER` (for monorepos) and `DEV_START_COMMAND`. See an example with Bun + Node + load tester on the dev branch here: https://github.com/bikramkgupta/bun-node-comparison-harness/tree/dev
+DigitalOcean App Platform lets you run multiple components in one app. Each component can use this template image and its own `DEV_START_COMMAND` (and optional deploy jobs). See an example with Bun + Node + load tester on the dev branch here: https://github.com/bikramkgupta/bun-node-comparison-harness/tree/dev
 
 ## Contributing
 

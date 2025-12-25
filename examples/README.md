@@ -1,6 +1,6 @@
 # Example Startup Scripts
 
-These `dev_startup.sh` examples handle dependency management automatically—when you add a new package to `package.json` or `requirements.txt`, the script detects the change and reinstalls before starting your dev server.
+These `dev_startup.sh` examples handle dependency management automatically—when you add a new package to `package.json` or `requirements.txt`, the script detects the change and reinstalls (and restarts your dev server when needed).
 
 If you're following the quick start, just copy one script to your repo root as `dev_startup.sh` and keep `DEV_START_COMMAND` set to `bash dev_startup.sh`.
 
@@ -25,7 +25,7 @@ If you're following the quick start, just copy one script to your repo root as `
 
 ## Why Use These?
 
-The container syncs code from GitHub every 15 seconds. If you add a dependency:
+The container syncs code from GitHub every 15 seconds (configurable via `GITHUB_SYNC_INTERVAL`). If you add a dependency:
 
 - **Without startup script:** Your app crashes because the new package isn't installed
 - **With startup script:** Detects the change, runs install, restarts—automatically

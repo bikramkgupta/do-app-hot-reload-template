@@ -76,11 +76,6 @@ services:
         value: ""
         scope: RUN_TIME
 
-      # For monorepos: specify subfolder (e.g., "apps/frontend")
-      - key: GITHUB_REPO_FOLDER
-        value: ""
-        scope: RUN_TIME
-
       # === Application Startup ===
       # Command to start your app
       # Leave empty if you have dev_startup.sh in your repo root
@@ -91,6 +86,9 @@ services:
       - key: DEV_START_COMMAND
         value: ""
         scope: RUN_TIME
+
+      # If your app lives in a subfolder, set an explicit repo-root-relative path:
+      #   value: "bash application/dev_startup.sh"
 
       # === Sync Settings ===
       # How often to sync from GitHub (seconds)
@@ -123,6 +121,25 @@ services:
         scope: RUN_TIME
       - key: POST_DEPLOY_TIMEOUT
         value: "300"
+        scope: RUN_TIME
+
+      # === Bindable variables (convenience) ===
+      # App Platform bindable variables:
+      # https://docs.digitalocean.com/products/app-platform/how-to/use-environment-variables/#using-bindable-variables-within-environment-variables
+      - key: BASE_URL
+        value: "${APP_URL}"
+        scope: RUN_TIME
+      - key: APP_DOMAIN
+        value: "${APP_DOMAIN}"
+        scope: RUN_TIME
+      - key: APP_ID
+        value: "${APP_ID}"
+        scope: RUN_TIME
+      - key: COMMIT_HASH
+        value: "${_self.COMMIT_HASH}"
+        scope: RUN_TIME
+      - key: PUBLIC_URL
+        value: "${_self.PUBLIC_URL}"
         scope: RUN_TIME
 
 alerts:
