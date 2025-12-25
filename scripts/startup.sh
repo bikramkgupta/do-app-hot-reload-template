@@ -45,6 +45,22 @@ command -v mongosh &>/dev/null && echo "  ✓ MongoDB"
 command -v mysql &>/dev/null && echo "  ✓ MySQL"
 echo ""
 
+# Start dev health check server EARLY (before sync) so container stays healthy
+# during potentially long clone operations
+ENABLE_DEV_HEALTH="${ENABLE_DEV_HEALTH:-true}"
+DEV_HEALTH_PORT="${DEV_HEALTH_PORT:-9090}"
+if [ "$ENABLE_DEV_HEALTH" = "true" ]; then
+    echo "Starting dev health check server..."
+    DEV_HEALTH_PORT="$DEV_HEALTH_PORT" /usr/local/bin/dev-health-server &
+    HEALTH_PID=$!
+    echo "✓ Dev health check server started (PID: $HEALTH_PID) - endpoint: /dev_health on port $DEV_HEALTH_PORT"
+    echo ""
+else
+    echo "Skipping dev health check server (ENABLE_DEV_HEALTH=$ENABLE_DEV_HEALTH)"
+    echo "Ensure your application exposes its own health endpoint per your App Spec."
+    echo ""
+fi
+
 echo "=========================================="
 echo "Starting GitHub Sync Service..."
 echo "=========================================="
@@ -151,21 +167,6 @@ echo "Starting continuous sync service..."
 GITHUB_SYNC_PID=$!
 echo "✓ GitHub sync service started (PID: $GITHUB_SYNC_PID)"
 echo ""
-
-# Start dev health check server (built-in Go binary) unless disabled
-ENABLE_DEV_HEALTH="${ENABLE_DEV_HEALTH:-true}"
-DEV_HEALTH_PORT="${DEV_HEALTH_PORT:-9090}"
-if [ "$ENABLE_DEV_HEALTH" = "true" ]; then
-    echo "Starting dev health check server..."
-    DEV_HEALTH_PORT="$DEV_HEALTH_PORT" /usr/local/bin/dev-health-server &
-    HEALTH_PID=$!
-    echo "✓ Dev health check server started (PID: $HEALTH_PID) - endpoint: /dev_health on port $DEV_HEALTH_PORT"
-    echo ""
-else
-    echo "Skipping dev health check server (ENABLE_DEV_HEALTH=$ENABLE_DEV_HEALTH)"
-    echo "Ensure your application exposes its own health endpoint per your App Spec."
-    echo ""
-fi
 
 # Start welcome page server (built-in Go binary) on port 8080
 # This will automatically stop when the user's app starts via DEV_START_COMMAND
