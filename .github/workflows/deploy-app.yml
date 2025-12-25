@@ -382,9 +382,8 @@ jobs:
           # Create a temporary file with the env content
           echo "$ENV_CONTENT" > /tmp/env_content.txt
 
-          # Use sandbox to write the file and create trigger
-          sandbox exec "$APP_ID" "$COMPONENT_NAME" "cat > /workspaces/app/.env << 'ENVEOF'
-${ENV_CONTENT}ENVEOF"
+          # Use sandbox to write the file - pipe content through cat
+          cat /tmp/env_content.txt | sandbox exec "$APP_ID" "$COMPONENT_NAME" "cat > /workspaces/app/.env"
 
           # Create trigger file to signal dev startup script to restart
           sandbox exec "$APP_ID" "$COMPONENT_NAME" "touch /workspaces/app/.env_updated"
