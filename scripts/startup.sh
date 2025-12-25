@@ -244,7 +244,60 @@ if [ -n "${DEV_START_COMMAND:-}" ]; then
     fi
 
     # Execute command with environment loaded
-    exec bash -c "${ENV_SETUP}${DEV_START_COMMAND}"
+    # NOTE: We do NOT use 'exec' here so that if the command fails, the script
+    # continues and keeps the container alive for debugging.
+    bash -c "${ENV_SETUP}${DEV_START_COMMAND}"
+    EXIT_CODE=$?
+
+    # If command exited (crashed or file not found), keep container alive for debugging
+    if [ $EXIT_CODE -ne 0 ]; then
+        echo ""
+        echo "=========================================="
+        echo "Application Failed (exit code: $EXIT_CODE)"
+        echo "=========================================="
+        echo ""
+        echo "Command: ${DEV_START_COMMAND}"
+        echo "Working directory: $(pwd)"
+        echo ""
+
+        # Show git info if available
+        if [ -d "$WORKSPACE/.git" ]; then
+            echo "Git Status:"
+            echo "  Branch: $(cd "$WORKSPACE" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')"
+            echo "  Commit: $(cd "$WORKSPACE" && git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+            echo ""
+        fi
+
+        echo "Workspace contents ($WORKSPACE):"
+        ls -la "$WORKSPACE" 2>/dev/null | head -15
+        echo ""
+
+        # If command contains a path to a .sh file, check if that path exists
+        if [[ "$DEV_START_COMMAND" =~ ([a-zA-Z0-9_/.+-]+\.sh) ]]; then
+            SCRIPT_PATH="${BASH_REMATCH[1]}"
+            echo "Checking script path: $SCRIPT_PATH"
+            if [ -f "$WORKSPACE/$SCRIPT_PATH" ]; then
+                echo "  ✓ File exists at $WORKSPACE/$SCRIPT_PATH"
+            else
+                echo "  ✗ File NOT found at $WORKSPACE/$SCRIPT_PATH"
+                echo ""
+                echo "Looking for .sh files in workspace..."
+                find "$WORKSPACE" -name "*.sh" -type f 2>/dev/null | head -10
+            fi
+            echo ""
+        fi
+
+        echo "Container will stay alive for debugging."
+        echo "Health check: http://your-app:9090/dev_health"
+        echo ""
+        echo "Debug tips:"
+        echo "  - Shell in via: doctl apps console <app-id>"
+        echo "  - Or use do-app-sandbox for remote access"
+        echo ""
+
+        # Keep container alive for debugging
+        tail -f /dev/null
+    fi
 else
     echo "=========================================="
     echo "No Application Command Configured"
