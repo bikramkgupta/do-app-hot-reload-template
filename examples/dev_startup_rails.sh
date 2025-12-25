@@ -23,9 +23,12 @@ STORED_HASH=$(cat "$HASH_FILE" 2>/dev/null || echo "")
 
 install_deps() {
     echo "Installing gems..."
+    # Remove Gemfile.lock to avoid conflicts but keep vendor/bundle for speed
+    rm -f Gemfile.lock
+
     if ! bundle install; then
         echo "Standard install failed, trying hard rebuild..."
-        rm -rf vendor/bundle Gemfile.lock
+        rm -rf vendor/bundle
         bundle install
     fi
     echo "$CURRENT_HASH" > "$HASH_FILE"
